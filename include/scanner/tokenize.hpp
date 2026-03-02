@@ -24,4 +24,14 @@ static const std::pair<const char*, tkn::token_variant_t>
         {"}", tkn::RightBrace{}},
 };
 
+static const std::pair<char, char> escape_table[] = {
+    {'n', '\n'},  {'t', '\t'}, {'\\', '\\'}, {'"', '"'},
+    {'0', '\0'},  {'r', '\r'}, {'f', '\f'},  {'b', '\b'},
+    {'\'', '\''}, {'a', '\a'}, {'v', '\v'},
+};
+
+struct DummyConverter {};
+
+struct StringLiteralConverter {};
+
 auto tokenize(const std::string& code) -> std::vector<tkn::TokenInfo>;

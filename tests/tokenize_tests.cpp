@@ -244,3 +244,47 @@ TEST(StringLiteralTests, MultipleStringTokensSeparatedBySpace) {
 
   expect_tokens_eq(tokens, expected);
 }
+
+TEST(StringLiteralTests, EscapedCharacters) {
+  std::string code = R"("a\"b\\c\n")";
+  std::cout << "code: " << code << std::endl;
+  std::string expected_value = "a\"b\\c\n";
+  auto tokens = tokenize(code);
+
+  std::vector<TokenInfo> expected{
+      TokenInfo{StringLiteral{.value = expected_value},
+                Position{.line = 1, .offset = 1, .size = code.size()}}};
+
+  expect_tokens_eq(tokens, expected);
+}
+
+TEST(StringLiteralTests, UnterminatedStringThrows) {
+  std::string code = "\"hello";
+  EXPECT_THROW(tokenize(code), std::runtime_error);
+}
+
+TEST(StringLiteralTests, EscapedQuoteAtEnd) {
+  std::string code = "\"say \\\"hi\\\"\"";
+  std::string expected_value = "say \"hi\"";
+
+  auto tokens = tokenize(code);
+
+  std::vector<TokenInfo> expected{
+      TokenInfo{StringLiteral{.value = expected_value},
+                Position{.line = 1, .offset = 1, .size = code.size()}}};
+
+  expect_tokens_eq(tokens, expected);
+}
+
+TEST(StringLiteralTests, StringContainingEscapedBackslashAndQuote) {
+  std::string code = "\"path\\\\to\\\\\\\"file\\\"\"";
+  std::string expected_value = "path\\to\\\"file\"";
+
+  auto tokens = tokenize(code);
+
+  std::vector<TokenInfo> expected{
+      TokenInfo{StringLiteral{.value = expected_value},
+                Position{.line = 1, .offset = 1, .size = code.size()}}};
+
+  expect_tokens_eq(tokens, expected);
+}

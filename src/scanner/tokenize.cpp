@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <functional>
 #include <iostream>
 
 bool identifier_filter(char c) {
@@ -13,28 +12,52 @@ bool identifier_filter(char c) {
 
 bool string_literal_filter(char c) { return c != '"'; }
 
-std::pair<std::string, std::size_t>
-read_string(const std::string& code, std::size_t i,
-            std::function<bool(char)> filter) {
+template <typename Converter>
+auto read_string(const std::string& code, std::size_t i, bool (*filter)(char))
+    -> std::pair<std::string, std::size_t> {
   std::string name;
   while (i < code.size() && filter(code[i])) {
+    if constexpr (std::is_same_v<Converter, StringLiteralConverter>) {
+      if (code[i] == '\\') {
+        ++i;
+        if (i < code.size()) {
+          auto result =
+              std::find_if(std::begin(escape_table), std::end(escape_table),
+                           [f = code[i]](auto c) { return c.first == f; });
+          if (result != std::end(escape_table)) {
+            name.push_back(result->second);
+            ++i;
+            continue;
+          } else {
+            std::cerr << "Unknown escape sequence: \\" << code[i] << std::endl;
+            throw std::runtime_error("Unknown escape sequence");
+          }
+        } else {
+          std::cerr << "Unterminated string" << std::endl;
+          throw std::runtime_error("Unterminated string");
+        }
+        continue;
+      } else if (code[i] == '\n') {
+        std::cerr << "Multiline string literals are not supported" << std::endl;
+        throw std::runtime_error("Multiline string literals are not supported");
+      }
+    }
     name.push_back(code[i]);
     ++i;
   }
-  --i;
-  return {name, i};
+  std::cout << name << std::endl;
+  return {name, i - 1};
 }
 
-std::pair<std::uint64_t, std::size_t> read_number(const std::string& code,
-                                                  std::size_t i) {
+auto read_number(const std::string& code, std::size_t i)
+    -> std::pair<std::uint64_t, std::size_t> {
   std::uint64_t value = 0;
   while (i < code.size() && code[i] >= '0' && code[i] <= '9') {
     value *= 10;
     value += code[i] - '0';
     ++i;
   }
-  --i;
-  return {value, i};
+  return {value, i - 1};
 }
 
 auto tokenize(const std::string& code) -> std::vector<tkn::TokenInfo> {
@@ -76,7 +99,8 @@ auto tokenize(const std::string& code) -> std::vector<tkn::TokenInfo> {
       current_offset += new_i - i;
       i = new_i;
     } else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
-      auto [name, new_i] = read_string(code, i, identifier_filter);
+      auto [name, new_i] =
+          read_string<DummyConverter>(code, i, identifier_filter);
       auto it = std::find_if(
           std::begin(keyword_table), std::end(keyword_table),
           [p = code.c_str() + i, size = name.size()](const auto& pair) {
@@ -100,7 +124,13 @@ auto tokenize(const std::string& code) -> std::vector<tkn::TokenInfo> {
       current_offset += new_i - i;
       i = new_i;
     } else if (c == '"') {
-      auto [name, new_i] = read_string(code, i + 1, string_literal_filter);
+      auto [name, new_i] = read_string<StringLiteralConverter>(
+          code, i + 1, string_literal_filter);
+      if (new_i + 1 >= code.size() || code[new_i + 1] != '"') {
+        std::cerr << "Unterminated string literal at line " << current_line
+                  << ", offset " << current_offset << "." << std::endl;
+        throw std::runtime_error("Unterminated string literal");
+      }
       tokens.emplace_back(
           tkn::StringLiteral{
               .value = name,
