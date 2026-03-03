@@ -19,6 +19,7 @@ file(GLOB_RECURSE TEST_SRC
 
 add_executable(tests
     ${TEST_SRC}
+    $<TARGET_OBJECTS:compiler_objects>
 )
 
 target_include_directories(tests
@@ -28,8 +29,8 @@ target_include_directories(tests
 
 target_link_libraries(tests
     PRIVATE
+        compiler_headers
         GTest::gtest_main
-        $<TARGET_OBJECTS:compiler_objects>
 )
 
 target_compile_options(tests

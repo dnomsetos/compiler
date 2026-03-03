@@ -15,13 +15,19 @@ file(GLOB_RECURSE COMPILER_SRC
 
 list(FILTER COMPILER_SRC EXCLUDE REGEX "src/main.cpp$")
 
+add_library(compiler_headers INTERFACE)
+
+target_include_directories(compiler_headers
+    INTERFACE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
 add_library(compiler_objects OBJECT
     ${COMPILER_SRC}
 )
 
-target_include_directories(compiler_objects
-    PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
+target_link_libraries(compiler_objects
+    PUBLIC compiler_headers
 )
 
 target_compile_options(compiler_objects
@@ -32,6 +38,10 @@ target_compile_options(compiler_objects
 add_executable(compiler
     src/main.cpp
     $<TARGET_OBJECTS:compiler_objects>
+)
+
+target_link_libraries(compiler
+    PRIVATE compiler_headers
 )
 
 add_custom_target(run
