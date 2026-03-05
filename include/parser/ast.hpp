@@ -1,6 +1,5 @@
 #pragma once
 
-#include "utility/type_tuple.hpp"
 #include <memory>
 #include <optional>
 #include <vector>
@@ -8,6 +7,7 @@
 #include <scanner/token.hpp>
 #include <utility/ast_allocator.hpp>
 #include <utility/storage.hpp>
+#include <utility/type_tuple.hpp>
 
 namespace ast {
 

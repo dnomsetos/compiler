@@ -2,8 +2,7 @@
 
 #include <parser/parse.hpp>
 #include <scanner/tokenize.hpp>
-
-#include <cassert>
+#include <utility/executor.hpp>
 
 int main() {
   auto tokens = tokenize("var a : int;"

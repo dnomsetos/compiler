@@ -1,9 +1,9 @@
-#include "scanner/tokenize.hpp"
-
 #include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <iostream>
+
+#include <scanner/tokenize.hpp>
 
 bool identifier_filter(char c) {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||

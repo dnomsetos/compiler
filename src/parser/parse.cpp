@@ -1,10 +1,10 @@
+#include <expected>
+#include <variant>
+
 #include <parser/ast.hpp>
 #include <parser/parse.hpp>
 #include <scanner/token.hpp>
 #include <utility/type_tuple.hpp>
-
-#include <expected>
-#include <variant>
 
 template <typename Result, typename PartType, TypeTupleLike OperationTuple>
 auto parse_left_associative(

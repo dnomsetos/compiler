@@ -1,13 +1,13 @@
 #pragma once
 
-#include "scanner/token.hpp"
-#include "utility/type_tuple.hpp"
 #include <deque>
 #include <expected>
 #include <memory_resource>
+#include <stdexcept>
 
 #include <parser/ast.hpp>
-#include <stdexcept>
+#include <scanner/token.hpp>
+#include <utility/type_tuple.hpp>
 
 struct UnexpectedToken : std::runtime_error, tkn::Position {
   type_tuple_to_variant_t<tkn::TokenTuple> expected_token;
