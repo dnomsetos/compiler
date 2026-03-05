@@ -45,7 +45,6 @@ auto read_string(const std::string& code, std::size_t i, bool (*filter)(char))
     name.push_back(code[i]);
     ++i;
   }
-  std::cout << name << std::endl;
   return {name, i - 1};
 }
 
@@ -60,8 +59,8 @@ auto read_number(const std::string& code, std::size_t i)
   return {value, i - 1};
 }
 
-auto tokenize(const std::string& code) -> std::vector<tkn::TokenInfo> {
-  std::vector<tkn::TokenInfo> tokens;
+auto tokenize(const std::string& code) -> std::deque<tkn::TokenInfo> {
+  std::deque<tkn::TokenInfo> tokens;
   std::size_t current_line = 1;
   std::size_t current_offset = 0;
   for (std::size_t i = 0; i < code.size(); ++i) {
@@ -167,5 +166,9 @@ auto tokenize(const std::string& code) -> std::vector<tkn::TokenInfo> {
       current_offset += token_size - 1;
     }
   }
+  tokens.emplace_back(tkn::EOFToken{},
+                      tkn::Position{.line = current_line,
+                                    .offset = current_offset + 1,
+                                    .size = 0});
   return tokens;
 }

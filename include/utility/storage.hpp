@@ -1,18 +1,11 @@
-#include <iostream>
-#include <string>
+#pragma once
+
 #include <tuple>
+
 #include <type_traits>
 
-#include "utility/type_tuple.hpp"
-
-struct Position {
-  std::size_t line;
-  std::size_t offset;
-};
-
-struct Type {
-  std::string name;
-};
+#include <scanner/token.hpp>
+#include <utility/type_tuple.hpp>
 
 template <TypeTupleLike T> struct TypeTuplePopBack;
 
@@ -60,34 +53,34 @@ using type_tuple_to_storage_t = typename TypeTupleToStorage<T>::type;
 
 static_assert(
     std::is_same_v<type_tuple_to_storage_t<
-                       type_tuple_pop_back_t<TypeTuple<Position, Type>>>,
-                   Storage<Position>>);
-static_assert(std::is_same_v<last_type_t<Position, Type>, Type>);
-
-struct Dummy1 {};
-struct Dummy2 {};
+                       type_tuple_pop_back_t<TypeTuple<tkn::Position, int>>>,
+                   Storage<tkn::Position>>);
+static_assert(std::is_same_v<last_type_t<tkn::Position, int>, int>);
 
 template <typename... Ts>
 struct Storage
     : type_tuple_to_storage_t<type_tuple_pop_back_t<TypeTuple<Ts...>>>,
       last_type_t<Ts...> {
 public:
-  Storage(Ts &&...args)
-      : Storage(std::make_tuple(std::forward<Ts>(args)...),
-                std::make_index_sequence<sizeof...(Ts) - 1>{}) {}
+  template <typename... Us,
+            typename = std::enable_if_t<(sizeof...(Us) == sizeof...(Ts))>>
+  Storage(Us&&... args)
+      : Storage(std::make_tuple(std::forward<Us>(args)...),
+                std::make_index_sequence<sizeof...(Us) - 1>{}) {}
 
-private:
+protected:
   using StorageBase =
       type_tuple_to_storage_t<type_tuple_pop_back_t<TypeTuple<Ts...>>>;
 
   using LastType = last_type_t<Ts...>;
 
   template <typename Tuple, std::size_t... Is>
-  Storage(Tuple &&tuple, std::index_sequence<Is...>)
+  Storage(Tuple&& tuple, std::index_sequence<Is...>)
       : StorageBase(std::get<Is>(std::forward<Tuple>(tuple))...),
         LastType(std::get<sizeof...(Is)>(std::forward<Tuple>(tuple))) {}
 };
 
 template <> struct Storage<> {};
 
-static_assert(std::is_base_of_v<Storage<Position>, Storage<Position, Type>>);
+static_assert(std::is_base_of_v<Storage<tkn::Position>,
+                                Storage<tkn::Position, std::true_type>>);

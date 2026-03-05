@@ -23,7 +23,7 @@ jobs:
         run: |
           cmake -S . -B build \
             -DCMAKE_CXX_COMPILER=g++-11 \
-            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_BUILD_TYPE=Debug
 
       - name: Build and run tests
         run: cmake --build build --target run_tests

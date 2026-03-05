@@ -1,12 +1,12 @@
 program ::= definition*
 definition ::= function_definition | variable_definition
-function_definition ::= "fn" identifier arguments_list "->" identifier "{" statement* expression "}"
+function_definition ::= "fn" identifier "(" ")" "{" statement* expression "}"
 variable_definition ::= "var" identifier ":" identifier ";"
-arguments_list ::= identifier : identifier ("," identifier : identifier)*
+arguments_list ::= (identifier : identifier ("," identifier : identifier)*) | eps
 statement ::= expression ";" | if_statement | variable_definition
 if_statement ::= "if" "(" expression ")" "{" statements* "}" ("else" "if" "(" expression ")" "{" statement* "}")* ("else" "{" statement* "}")?
-expression ::= assignment | functuion_call
-assignment ::= or | identifier ("=" identifier)* "=" or
+expression ::= assignment | or 
+assignment ::= identifier "=" expression
 or ::= xor ("|" xor)*
 xor ::= and ("^" and)*
 and ::= equality ("&" equality)*
@@ -14,6 +14,6 @@ equality ::= comparison (("==" | "!=") comparison)*
 comparison ::= addition (("<" | ">" | "<=" | ">=") addition)*
 addition ::= multiplication (("+" | "-") multiplication)*
 multiplication ::= unary (("*" | "/" | "%") unary)*
-unary ::= ("-" | "+" | "!") primary
-primary ::= identifier | literal | "(" expression ")"
+unary ::= ("-" | "+" | "!")? primary
+primary ::= identifier ("("")")? | literal | "(" expression ")"
 literal ::= int_literal | float_literal | string_literal

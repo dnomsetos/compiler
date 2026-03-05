@@ -1,8 +1,8 @@
 #pragma once
 
-#include <vector>
+#include <deque>
 
-#include "token.hpp"
+#include <scanner/token.hpp>
 
 static const std::pair<const char*, tkn::token_variant_t> keyword_table[] = {
     {"fn", tkn::Fn{}},
@@ -14,14 +14,17 @@ static const std::pair<const char*, tkn::token_variant_t> keyword_table[] = {
 static const std::pair<const char*, tkn::token_variant_t>
     language_symbols_table[] = {
         {"->", tkn::Arrow{}},      {"!=", tkn::NotEqual{}},
-        {"==", tkn::Equal{}},      {"+", tkn::Plus{}},
+        {"==", tkn::Equal{}},      {">=", tkn::GreaterEqual{}},
+        {"<=", tkn::LessEqual{}},  {">", tkn::Greater{}},
+        {"<", tkn::Less{}},        {"+", tkn::Plus{}},
         {"-", tkn::Minus{}},       {"*", tkn::Multiply{}},
         {"/", tkn::Divide{}},      {"%", tkn::Mod{}},
         {"&", tkn::And{}},         {"|", tkn::Or{}},
         {"^", tkn::Xor{}},         {";", tkn::Semicolon{}},
         {":", tkn::Colon{}},       {"(", tkn::LeftParent{}},
         {")", tkn::RightParent{}}, {"{", tkn::LeftBrace{}},
-        {"}", tkn::RightBrace{}},
+        {"}", tkn::RightBrace{}},  {"=", tkn::Assignment{}},
+        {"!", tkn::Not{}},
 };
 
 static const std::pair<char, char> escape_table[] = {
@@ -34,4 +37,4 @@ struct DummyConverter {};
 
 struct StringLiteralConverter {};
 
-auto tokenize(const std::string& code) -> std::vector<tkn::TokenInfo>;
+auto tokenize(const std::string& code) -> std::deque<tkn::TokenInfo>;
