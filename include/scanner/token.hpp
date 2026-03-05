@@ -40,6 +40,7 @@ GENERATE_EMPTY_TOKEN(LeftBrace)
 GENERATE_EMPTY_TOKEN(RightBrace)
 GENERATE_EMPTY_TOKEN(LeftParent)
 GENERATE_EMPTY_TOKEN(RightParent)
+GENERATE_EMPTY_TOKEN(Comma)
 GENERATE_EMPTY_TOKEN(EOFToken)
 
 struct Identifier {
@@ -89,9 +90,9 @@ using EqualityOperatorTuple = TypeTuple<Equal, NotEqual>;
 using TokenTuple =
     TypeTuple<Plus, Minus, Multiply, Divide, Mod, Equal, NotEqual, Less,
               Greater, LessEqual, GreaterEqual, Assignment, And, Or, Xor, Not,
-              Fn, Var, Arrow, Semicolon, Colon, If, Else, LeftBrace, RightBrace,
-              LeftParent, RightParent, EOFToken, Identifier, IntLiteral,
-              FloatLiteral, StringLiteral>;
+              Fn, Var, Arrow, Semicolon, Colon, If, Else, Comma, LeftBrace,
+              RightBrace, LeftParent, RightParent, EOFToken, Identifier,
+              IntLiteral, FloatLiteral, StringLiteral>;
 
 struct Position {
   std::size_t line;

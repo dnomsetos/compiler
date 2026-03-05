@@ -150,3 +150,41 @@ TEST(ParserTest, Test10) {
   auto result = parse_program(tokens.begin(), tokens.end(), mr);
   ASSERT_TRUE(result.has_value());
 }
+
+TEST(ParserTest, Test11) {
+  auto tokens =
+      tokenize("var x : int;"
+               "var y : int;"
+               ""
+               "fn inc() {"
+               "    x = x + 1;"
+               "    x"
+               "}"
+               ""
+               "fn sum_squares() {"
+               "    y = inc(42 * 54) * inc(aboba(-bebra), 5 & (3 -43));"
+               "    y"
+               "}");
+  auto mr = std::pmr::monotonic_buffer_resource();
+  auto result = parse_program(tokens.begin(), tokens.end(), mr);
+  ASSERT_TRUE(result.has_value());
+}
+
+TEST(ParserTest, Test12) {
+  auto tokens =
+      tokenize("var x : int;"
+               "var y : int;"
+               ""
+               "fn inc(a : int, b : char, c : float) {"
+               "    x = x + 1;"
+               "    x"
+               "}"
+               ""
+               "fn sum_squares() {"
+               "    y = inc(42 * 54) * inc(aboba(-bebra), 5 & (3 -43));"
+               "    y"
+               "}");
+  auto mr = std::pmr::monotonic_buffer_resource();
+  auto result = parse_program(tokens.begin(), tokens.end(), mr);
+  ASSERT_TRUE(result.has_value());
+}

@@ -39,7 +39,10 @@ struct IdentifierNode : Storage<tkn::Position> {
 
 struct ExpressionNode;
 
-using PrimaryNodeTuple = TypeTuple<LiteralNode, IdentifierNode, ExpressionNode>;
+struct FunctionCallNode;
+
+using PrimaryNodeTuple =
+    TypeTuple<LiteralNode, IdentifierNode, ExpressionNode, FunctionCallNode>;
 
 struct PrimaryNode : Storage<tkn::Position, Type> {
   pmr_unique_ptr<type_tuple_to_variant_t<PrimaryNodeTuple>> primary;
@@ -111,6 +114,16 @@ struct ExpressionNode : Storage<tkn::Position, Type> {
             mr, std::forward<T>(node))} {}
 };
 
+struct FunctionCallNode : Storage<tkn::Position> {
+  pmr_unique_ptr<IdentifierNode> name;
+  std::pmr::vector<ExpressionNode> arguments;
+
+  FunctionCallNode(pmr_unique_ptr<IdentifierNode>&& name,
+                   const tkn::Position& position, std::pmr::memory_resource* mr)
+      : Storage<tkn::Position>(position), name{std::move(name)}, arguments{mr} {
+  }
+};
+
 struct IfStatementNode;
 
 struct VariableDefinitionNode;
@@ -162,6 +175,8 @@ struct VariableDefinitionNode : Storage<tkn::Position> {
 
 struct FunctionDefinitionNode : Storage<tkn::Position> {
   pmr_unique_ptr<IdentifierNode> name;
+  std::pmr::vector<std::pair<IdentifierNode, IdentifierNode>> argument_lits;
+  pmr_unique_ptr<IdentifierNode> return_type;
   std::pmr::vector<StatementNode> body;
   pmr_unique_ptr<ExpressionNode> return_value;
 
@@ -169,7 +184,7 @@ struct FunctionDefinitionNode : Storage<tkn::Position> {
   FunctionDefinitionNode(T&& name, const tkn::Position& position,
                          std::pmr::memory_resource* mr)
       : Storage<tkn::Position>(position), name{std::forward<T>(name)},
-        body{mr} {}
+        argument_lits{mr}, body{mr} {}
 };
 
 using DefinitionTuple =

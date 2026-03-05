@@ -24,7 +24,7 @@ static const std::pair<const char*, tkn::token_variant_t>
         {":", tkn::Colon{}},       {"(", tkn::LeftParent{}},
         {")", tkn::RightParent{}}, {"{", tkn::LeftBrace{}},
         {"}", tkn::RightBrace{}},  {"=", tkn::Assignment{}},
-        {"!", tkn::Not{}},
+        {"!", tkn::Not{}},         {",", tkn::Comma{}},
 };
 
 static const std::pair<char, char> escape_table[] = {

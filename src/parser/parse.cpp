@@ -85,6 +85,48 @@ auto parse_function_definition(ParseIter begin, std::pmr::memory_resource& mr)
                                            begin->token_variant});
   }
   ++begin;
+  auto result = make_unique_pmr<ast::FunctionDefinitionNode>(
+      &mr, std::move(identifier.value().first), (begin - 2)->position, &mr);
+  auto first_arg = parse_identifier(begin, mr);
+  if (first_arg.has_value()) {
+    begin = first_arg.value().second;
+    if (!std::holds_alternative<tkn::Colon>(begin->token_variant)) {
+      return std::unexpected(
+          UnexpectedToken{begin->position, tkn::Colon{}, begin->token_variant});
+    }
+    ++begin;
+    auto first_arg_type = parse_identifier(begin, mr);
+    if (!first_arg_type.has_value()) {
+      return std::unexpected(first_arg_type.error());
+    }
+    begin = first_arg_type.value().second;
+    result->argument_lits.emplace_back(
+        std::move(*first_arg.value().first),
+        std::move(*first_arg_type.value().first));
+    for (;;) {
+      if (!std::holds_alternative<tkn::Comma>(begin->token_variant)) {
+        break;
+      }
+      ++begin;
+      auto arg = parse_identifier(begin, mr);
+      if (!arg.has_value()) {
+        return std::unexpected(arg.error());
+      }
+      begin = arg.value().second;
+      if (!std::holds_alternative<tkn::Colon>(begin->token_variant)) {
+        return std::unexpected(UnexpectedToken{begin->position, tkn::Colon{},
+                                               begin->token_variant});
+      }
+      ++begin;
+      auto arg_type = parse_identifier(begin, mr);
+      if (!arg_type.has_value()) {
+        return std::unexpected(arg_type.error());
+      }
+      begin = arg_type.value().second;
+      result->argument_lits.emplace_back(std::move(*arg.value().first),
+                                         std::move(*arg_type.value().first));
+    }
+  }
   if (!std::holds_alternative<tkn::RightParent>(begin->token_variant)) {
     return std::unexpected(UnexpectedToken{begin->position, tkn::RightParent{},
                                            begin->token_variant});
@@ -95,8 +137,6 @@ auto parse_function_definition(ParseIter begin, std::pmr::memory_resource& mr)
                                            begin->token_variant});
   }
   ++begin;
-  auto result = make_unique_pmr<ast::FunctionDefinitionNode>(
-      &mr, std::move(identifier.value().first), begin->position, &mr);
   for (;;) {
     auto stmt = parse_statement(begin, mr);
     if (!stmt.has_value()) {
@@ -410,6 +450,7 @@ auto parse_unary(ParseIter begin, std::pmr::memory_resource& mr)
 
 auto parse_primary(ParseIter begin, std::pmr::memory_resource& mr)
     -> ParseResult<ast::PrimaryNode> {
+  auto start_begin = begin;
   if (std::holds_alternative<tkn::LeftParent>(begin->token_variant)) {
     auto expr = parse_expression(begin + 1, mr);
     if (expr.has_value()) {
@@ -434,18 +475,39 @@ auto parse_primary(ParseIter begin, std::pmr::memory_resource& mr)
     begin = identifier.value().second;
     if (std::holds_alternative<tkn::LeftParent>(begin->token_variant)) {
       ++begin;
+      auto result = make_unique_pmr<ast::FunctionCallNode>(
+          &mr, std::move(identifier.value().first), (begin - 2)->position, &mr);
+      auto first_expr = parse_expression(begin, mr);
+      if (first_expr.has_value()) {
+        begin = first_expr.value().second;
+        for (;;) {
+          if (!std::holds_alternative<tkn::Comma>(begin->token_variant)) {
+            break;
+          }
+          ++begin;
+          auto expr = parse_expression(begin, mr);
+          if (!expr.has_value()) {
+            return std::unexpected(expr.error());
+          }
+          result->arguments.emplace_back(std::move(*expr.value().first));
+          begin = expr.value().second;
+        }
+      }
       if (!std::holds_alternative<tkn::RightParent>(begin->token_variant)) {
         return std::unexpected(UnexpectedToken{
             begin->position, tkn::RightParent{}, begin->token_variant});
       }
-      ++begin;
+      return std::make_pair(
+          make_unique_pmr<ast::PrimaryNode>(&mr, std::move(*result),
+                                            start_begin->position, &mr),
+          begin + 1);
     }
-    return std::make_pair(
-        make_unique_pmr<ast::PrimaryNode>(
-            &mr, std::move(*identifier.value().first), begin->position, &mr),
-        begin);
+    return std::make_pair(make_unique_pmr<ast::PrimaryNode>(
+                              &mr, std::move(*identifier.value().first),
+                              start_begin->position, &mr),
+                          begin);
   }
-  return std::unexpected(TryButCant{begin->position, nterm::Primary{}});
+  return std::unexpected(TryButCant{start_begin->position, nterm::Primary{}});
 }
 
 auto parse_literal(ParseIter begin, std::pmr::memory_resource& mr)
