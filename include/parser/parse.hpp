@@ -9,14 +9,14 @@
 #include <scanner/token.hpp>
 #include <utility/type_tuple.hpp>
 
-struct UnexpectedToken : std::runtime_error, tkn::Position {
+struct UnexpectedToken : tkn::Position {
   type_tuple_to_variant_t<tkn::TokenTuple> expected_token;
   type_tuple_to_variant_t<tkn::TokenTuple> real_token;
 
   template <typename T1, typename T2>
   UnexpectedToken(tkn::Position position, T1 expected_token, T2 real_token)
-      : std::runtime_error(""), tkn::Position{position},
-        expected_token{expected_token}, real_token{real_token} {}
+      : tkn::Position{position}, expected_token{expected_token},
+        real_token{real_token} {}
 };
 
 namespace nterm {
