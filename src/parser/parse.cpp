@@ -476,8 +476,8 @@ auto parse_primary(ParseIter begin, std::pmr::memory_resource& mr)
       auto result = make_unique_pmr<ast::FunctionCallNode>(
           &mr, std::move(identifier.value().first), (begin - 2)->position, &mr);
       auto first_expr = parse_expression(begin, mr);
-      result->arguments.emplace_back(std::move(*first_expr.value().first));
       if (first_expr.has_value()) {
+        result->arguments.emplace_back(std::move(*first_expr.value().first));
         begin = first_expr.value().second;
         for (;;) {
           if (!std::holds_alternative<tkn::Comma>(begin->token_variant)) {
