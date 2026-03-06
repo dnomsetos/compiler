@@ -154,13 +154,13 @@ struct IfStatementNode : Storage<tkn::Position> {
   pmr_unique_ptr<ExpressionNode> condition;
   std::pmr::vector<StatementNode> body;
   std::pmr::vector<ExpressionStatements> elif_bodies;
-  std::optional<std::pmr::vector<StatementNode>> else_body;
+  std::pmr::vector<StatementNode> else_body;
 
   template <typename T>
   IfStatementNode(T&& condition, const tkn::Position& position,
                   std::pmr::memory_resource* mr)
       : Storage<tkn::Position>(position), condition{std::forward<T>(condition)},
-        body{mr}, elif_bodies{mr} {}
+        body{mr}, elif_bodies{mr}, else_body{mr} {}
 };
 
 struct VariableDefinitionNode : Storage<tkn::Position> {

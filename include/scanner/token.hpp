@@ -36,6 +36,8 @@ GENERATE_EMPTY_TOKEN(Semicolon)
 GENERATE_EMPTY_TOKEN(Colon)
 GENERATE_EMPTY_TOKEN(If)
 GENERATE_EMPTY_TOKEN(Else)
+GENERATE_EMPTY_TOKEN(True)
+GENERATE_EMPTY_TOKEN(False)
 GENERATE_EMPTY_TOKEN(LeftBrace)
 GENERATE_EMPTY_TOKEN(RightBrace)
 GENERATE_EMPTY_TOKEN(LeftParent)
@@ -74,7 +76,15 @@ struct StringLiteral {
                          const StringLiteral& right) = default;
 };
 
-using LiteralTuple = TypeTuple<IntLiteral, FloatLiteral, StringLiteral>;
+struct BoolLiteral {
+  bool value;
+
+  friend bool operator==(const BoolLiteral& left,
+                         const BoolLiteral& right) = default;
+};
+
+using LiteralTuple =
+    TypeTuple<IntLiteral, FloatLiteral, StringLiteral, BoolLiteral>;
 
 using UnaryOperatorTuple = TypeTuple<Plus, Minus, Not>;
 
@@ -90,9 +100,9 @@ using EqualityOperatorTuple = TypeTuple<Equal, NotEqual>;
 using TokenTuple =
     TypeTuple<Plus, Minus, Multiply, Divide, Mod, Equal, NotEqual, Less,
               Greater, LessEqual, GreaterEqual, Assignment, And, Or, Xor, Not,
-              Fn, Var, Arrow, Semicolon, Colon, If, Else, Comma, LeftBrace,
-              RightBrace, LeftParent, RightParent, EOFToken, Identifier,
-              IntLiteral, FloatLiteral, StringLiteral>;
+              Fn, Var, Arrow, Semicolon, Colon, If, Else, True, False, Comma,
+              LeftBrace, RightBrace, LeftParent, RightParent, EOFToken,
+              Identifier, IntLiteral, FloatLiteral, StringLiteral, BoolLiteral>;
 
 struct Position {
   std::size_t line;

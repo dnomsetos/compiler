@@ -179,7 +179,7 @@ auto parse_variable_definition(ParseIter begin, std::pmr::memory_resource& mr)
     result->type = std::move(type.value().first);
     begin = type.value().second;
   }
-  if (std::holds_alternative<tkn::Equal>(begin->token_variant)) {
+  if (std::holds_alternative<tkn::Assignment>(begin->token_variant)) {
     auto expr = parse_expression(begin + 1, mr);
     if (!expr.has_value()) {
       return std::unexpected(expr.error());
@@ -287,14 +287,12 @@ auto parse_if_statement(ParseIter begin, std::pmr::memory_resource& mr)
                                              begin->token_variant});
     }
     ++begin;
-    if_stmt->else_body.emplace();
     for (;;) {
       auto statement = parse_statement(begin, mr);
       if (!statement.has_value()) {
         break;
       }
-      if_stmt->else_body.value().emplace_back(
-          std::move(*statement.value().first));
+      if_stmt->else_body.emplace_back(std::move(*statement.value().first));
       begin = statement.value().second;
     }
     if (!std::holds_alternative<tkn::RightBrace>(begin->token_variant)) {
@@ -478,6 +476,7 @@ auto parse_primary(ParseIter begin, std::pmr::memory_resource& mr)
       auto result = make_unique_pmr<ast::FunctionCallNode>(
           &mr, std::move(identifier.value().first), (begin - 2)->position, &mr);
       auto first_expr = parse_expression(begin, mr);
+      result->arguments.emplace_back(std::move(*first_expr.value().first));
       if (first_expr.has_value()) {
         begin = first_expr.value().second;
         for (;;) {

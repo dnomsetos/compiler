@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include <scanner/tokenize.hpp>
+#include <variant>
 
 bool identifier_filter(char c) {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
@@ -103,9 +104,27 @@ auto tokenize(const std::string& code) -> std::deque<tkn::TokenInfo> {
       auto it = std::find_if(
           std::begin(keyword_table), std::end(keyword_table),
           [p = code.c_str() + i, size = name.size()](const auto& pair) {
-            return size == std::strlen(pair.first) && pair.first[0] == p[0];
+            return size == std::strlen(pair.first) &&
+                   std::strncmp(p, pair.first, size) == 0;
           });
       if (it != std::end(keyword_table)) {
+        if (std::holds_alternative<tkn::True>(it->second)) {
+          tokens.emplace_back(tkn::BoolLiteral{.value = true},
+                              tkn::Position{.line = current_line,
+                                            .offset = current_offset,
+                                            .size = new_i + 1 - i});
+          current_offset += new_i - i;
+          i = new_i;
+          continue;
+        } else if (std::holds_alternative<tkn::False>(it->second)) {
+          tokens.emplace_back(tkn::BoolLiteral{.value = false},
+                              tkn::Position{.line = current_line,
+                                            .offset = current_offset,
+                                            .size = new_i + 1 - i});
+          current_offset += new_i - i;
+          i = new_i;
+          continue;
+        }
         tokens.emplace_back(it->second, tkn::Position{.line = current_line,
                                                       .offset = current_offset,
                                                       .size = new_i + 1 - i});

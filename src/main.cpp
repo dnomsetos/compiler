@@ -5,25 +5,22 @@
 #include <utility/executor.hpp>
 
 int main() {
-  auto tokens = tokenize("var a : int;"
-                         "var x : int;"
-                         ""
-                         "fn branch_test() {"
-                         "    if (a < 0) {"
-                         "        x = -1;"
-                         "    } else if (a == 0) {"
-                         "        x = 0;"
-                         "    } else {"
-                         "        x = 1;"
-                         "    }"
-                         "    x"
+  auto tokens = tokenize("fn main() {"
+                         "    var tmp : int = 42;"
+                         "    println(tmp - 35);"
+                         "    42 - tmp"
                          "}");
   auto mr = std::pmr::monotonic_buffer_resource();
   auto result = parse_program(tokens.begin(), tokens.end(), mr);
   if (!result.has_value()) {
     std::cout << "error" << std::endl;
   } else {
-    std::cout << "good" << std::endl;
+    std::unordered_map<std::string, calc_result> variables;
+    auto execute_result = execute_program(*result.value().first, variables);
+    if (std::holds_alternative<std::int64_t>(execute_result)) {
+      std::cout << "returned from main: "
+                << std::get<std::int64_t>(execute_result) << std::endl;
+    }
   }
   return 0;
 }
