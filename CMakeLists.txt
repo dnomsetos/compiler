@@ -30,10 +30,17 @@ target_link_libraries(compiler_objects
     PUBLIC compiler_headers
 )
 
-target_compile_options(compiler_objects
-    PRIVATE
-        -Wall -Wextra -Wpedantic
-)
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(compiler_objects
+        PRIVATE
+            -Wall -Wextra -Wpedantic -fsanitize=address,undefined
+    )
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+    target_compile_options(compiler_objects
+        PRIVATE
+            -Wall -Wextra -Wpedantic
+    )
+endif()
 
 add_executable(compiler
     src/main.cpp
@@ -44,11 +51,16 @@ target_link_libraries(compiler
     PRIVATE compiler_headers
 )
 
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(compiler PRIVATE -fsanitize=address,undefined)
+    target_link_options(compiler PRIVATE -fsanitize=address,undefined)
+endif()
+
 add_custom_target(run
     COMMAND $<TARGET_FILE:compiler>
     DEPENDS compiler
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMENT "Running compilier"
+    COMMENT "Running compiler"
 )
 
 enable_testing()

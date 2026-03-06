@@ -33,9 +33,14 @@ target_link_libraries(tests
         GTest::gtest_main
 )
 
+target_link_options(tests
+    PRIVATE
+        -fsanitize=address,undefined
+)
+
 target_compile_options(tests
     PRIVATE
-        -Wall -Wextra -Wpedantic
+        -Wall -Wextra -Wpedantic -fsanitize=address,undefined
 )
 
 include(GoogleTest)
