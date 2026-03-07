@@ -88,6 +88,8 @@ using LiteralTuple =
 
 using UnaryOperatorTuple = TypeTuple<Plus, Minus, Not>;
 
+using LogicalOperatorTuple = TypeTuple<And, Or, Xor, Not>;
+
 using HighPriorityArithmeticOperatorTuple = TypeTuple<Multiply, Divide, Mod>;
 
 using LowPriorityArithmeticOperatorTuple = TypeTuple<Plus, Minus>;
@@ -97,17 +99,34 @@ using ComparisonOperatorTuple =
 
 using EqualityOperatorTuple = TypeTuple<Equal, NotEqual>;
 
+using HelperTuple = TypeTuple<Arrow, Semicolon, Colon, Comma, LeftBrace,
+                              RightBrace, LeftParent, RightParent, EOFToken>;
+
+using KeywordsTuple = TypeTuple<Fn, Var, If, Else, True, False>;
+
 using TokenTuple =
-    TypeTuple<Plus, Minus, Multiply, Divide, Mod, Equal, NotEqual, Less,
-              Greater, LessEqual, GreaterEqual, Assignment, And, Or, Xor, Not,
-              Fn, Var, Arrow, Semicolon, Colon, If, Else, True, False, Comma,
-              LeftBrace, RightBrace, LeftParent, RightParent, EOFToken,
-              Identifier, IntLiteral, FloatLiteral, StringLiteral, BoolLiteral>;
+    Concat<LiteralTuple, LogicalOperatorTuple,
+           HighPriorityArithmeticOperatorTuple,
+           LowPriorityArithmeticOperatorTuple, EqualityOperatorTuple,
+           ComparisonOperatorTuple, HelperTuple, KeywordsTuple,
+           TypeTuple<Identifier, Assignment>>::type;
+
+struct Point {
+  std::size_t line;
+  std::size_t offset;
+};
 
 struct Position {
   std::size_t line;
   std::size_t offset;
   std::size_t size;
+
+  Position(std::size_t line, std::size_t offset, std::size_t size)
+      : line(line), offset(offset), size(size) {}
+
+  Position(Point start, Point end)
+      : line(start.line), offset(start.offset),
+        size(end.offset - start.offset) {}
 
   friend bool operator==(const Position& left, const Position& right) = default;
 };

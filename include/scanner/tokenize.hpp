@@ -4,12 +4,12 @@
 
 #include <scanner/token.hpp>
 
-static const std::pair<const char*, tkn::token_variant_t> keyword_table[] = {
+inline const std::pair<const char*, tkn::token_variant_t> keyword_table[] = {
     {"fn", tkn::Fn{}},     {"var", tkn::Var{}},   {"if", tkn::If{}},
     {"else", tkn::Else{}}, {"true", tkn::True{}}, {"false", tkn::False{}},
 };
 
-static const std::pair<const char*, tkn::token_variant_t>
+inline const std::pair<const char*, tkn::token_variant_t>
     language_symbols_table[] = {
         {"->", tkn::Arrow{}},      {"!=", tkn::NotEqual{}},
         {"==", tkn::Equal{}},      {">=", tkn::GreaterEqual{}},
@@ -25,7 +25,7 @@ static const std::pair<const char*, tkn::token_variant_t>
         {"!", tkn::Not{}},         {",", tkn::Comma{}},
 };
 
-static const std::pair<char, char> escape_table[] = {
+inline const std::pair<char, char> escape_table[] = {
     {'n', '\n'},  {'t', '\t'}, {'\\', '\\'}, {'"', '"'},
     {'0', '\0'},  {'r', '\r'}, {'f', '\f'},  {'b', '\b'},
     {'\'', '\''}, {'a', '\a'}, {'v', '\v'},

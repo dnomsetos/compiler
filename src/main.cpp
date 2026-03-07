@@ -5,13 +5,15 @@
 #include <utility/executor.hpp>
 
 int main() {
-  auto tokens = tokenize("fn main() {"
-                         "    var tmp : int = 42;"
-                         "    println(tmp - 35);"
-                         "    42 - tmp"
+  auto tokens = tokenize("var p : int;"
+                         "var q : int;"
+                         ""
+                         "fn main() {"
+                         "    p = (1 & 3) | (4 ^ 2);"
+                         "    q = p & (p | 7) ^ 5;"
+                         "    q"
                          "}");
-  auto mr = std::pmr::monotonic_buffer_resource();
-  auto result = parse_program(tokens.begin(), tokens.end(), mr);
+  auto result = parse_program(tokens.begin(), tokens.end());
   if (!result.has_value()) {
     std::cout << "error" << std::endl;
   } else {

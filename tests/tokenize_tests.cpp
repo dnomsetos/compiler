@@ -20,9 +20,8 @@ TEST(TokenizerMoreTests, IntegerLiteralSingle) {
   auto tokens = tokenize(code);
 
   std::deque<TokenInfo> expected{
-      TokenInfo{IntLiteral{.value = 123},
-                Position{.line = 1, .offset = 1, .size = 3}},
-      TokenInfo{EOFToken{}, Position{.line = 1, .offset = 4, .size = 0}}};
+      TokenInfo{IntLiteral{.value = 123}, Position(1, 1, 3)},
+      TokenInfo{EOFToken{}, Position(1, 4, 0)}};
 
   expect_tokens_eq(tokens, expected);
 }
@@ -32,9 +31,8 @@ TEST(TokenizerMoreTests, LargeInteger) {
   auto tokens = tokenize(code);
 
   std::deque<TokenInfo> expected{
-      TokenInfo{IntLiteral{.value = 4294967296ULL},
-                Position{.line = 1, .offset = 1, .size = 10}},
-      TokenInfo{EOFToken{}, Position{.line = 1, .offset = 11, .size = 0}}};
+      TokenInfo{IntLiteral{.value = 4294967296ULL}, Position(1, 1, 10)},
+      TokenInfo{EOFToken{}, Position(1, 11, 0)}};
 
   expect_tokens_eq(tokens, expected);
 }
@@ -44,10 +42,9 @@ TEST(TokenizerMoreTests, IdentifierAndKeyword) {
   auto tokens = tokenize(code);
 
   std::deque<TokenInfo> expected{
-      TokenInfo{Fn{}, Position{.line = 1, .offset = 1, .size = 2}},
-      TokenInfo{Identifier{.name = "main"},
-                Position{.line = 1, .offset = 4, .size = 4}},
-      TokenInfo{EOFToken{}, Position{.line = 1, .offset = 8, .size = 0}}};
+      TokenInfo{Fn{}, Position(1, 1, 2)},
+      TokenInfo{Identifier{.name = "main"}, Position(1, 4, 4)},
+      TokenInfo{EOFToken{}, Position(1, 8, 0)}};
 
   expect_tokens_eq(tokens, expected);
 }
@@ -57,24 +54,24 @@ TEST(TokenizerMoreTests, MultipleSymbolsMultiChar) {
   auto tokens = tokenize(code);
 
   std::deque<TokenInfo> expected{
-      TokenInfo{Arrow{}, Position{.line = 1, .offset = 1, .size = 2}},
-      TokenInfo{NotEqual{}, Position{.line = 1, .offset = 4, .size = 2}},
-      TokenInfo{Equal{}, Position{.line = 1, .offset = 7, .size = 2}},
-      TokenInfo{Plus{}, Position{.line = 1, .offset = 10, .size = 1}},
-      TokenInfo{Minus{}, Position{.line = 1, .offset = 12, .size = 1}},
-      TokenInfo{Multiply{}, Position{.line = 1, .offset = 14, .size = 1}},
-      TokenInfo{Divide{}, Position{.line = 1, .offset = 16, .size = 1}},
-      TokenInfo{Mod{}, Position{.line = 1, .offset = 18, .size = 1}},
-      TokenInfo{And{}, Position{.line = 1, .offset = 20, .size = 1}},
-      TokenInfo{Or{}, Position{.line = 1, .offset = 22, .size = 1}},
-      TokenInfo{Xor{}, Position{.line = 1, .offset = 24, .size = 1}},
-      TokenInfo{Semicolon{}, Position{.line = 1, .offset = 26, .size = 1}},
-      TokenInfo{Colon{}, Position{.line = 1, .offset = 28, .size = 1}},
-      TokenInfo{LeftParent{}, Position{.line = 1, .offset = 30, .size = 1}},
-      TokenInfo{RightParent{}, Position{.line = 1, .offset = 32, .size = 1}},
-      TokenInfo{LeftBrace{}, Position{.line = 1, .offset = 34, .size = 1}},
-      TokenInfo{RightBrace{}, Position{.line = 1, .offset = 36, .size = 1}},
-      TokenInfo{EOFToken{}, Position{.line = 1, .offset = 37, .size = 0}},
+      TokenInfo{Arrow{}, Position(1, 1, 2)},
+      TokenInfo{NotEqual{}, Position(1, 4, 2)},
+      TokenInfo{Equal{}, Position(1, 7, 2)},
+      TokenInfo{Plus{}, Position(1, 10, 1)},
+      TokenInfo{Minus{}, Position(1, 12, 1)},
+      TokenInfo{Multiply{}, Position(1, 14, 1)},
+      TokenInfo{Divide{}, Position(1, 16, 1)},
+      TokenInfo{Mod{}, Position(1, 18, 1)},
+      TokenInfo{And{}, Position(1, 20, 1)},
+      TokenInfo{Or{}, Position(1, 22, 1)},
+      TokenInfo{Xor{}, Position(1, 24, 1)},
+      TokenInfo{Semicolon{}, Position(1, 26, 1)},
+      TokenInfo{Colon{}, Position(1, 28, 1)},
+      TokenInfo{LeftParent{}, Position(1, 30, 1)},
+      TokenInfo{RightParent{}, Position(1, 32, 1)},
+      TokenInfo{LeftBrace{}, Position(1, 34, 1)},
+      TokenInfo{RightBrace{}, Position(1, 36, 1)},
+      TokenInfo{EOFToken{}, Position(1, 37, 0)},
   };
 
   expect_tokens_eq(tokens, expected);
@@ -85,11 +82,9 @@ TEST(TokenizerMoreTests, PositionTrackingNewlines) {
   auto tokens = tokenize(code);
 
   std::deque<TokenInfo> expected{
-      TokenInfo{IntLiteral{.value = 1},
-                Position{.line = 1, .offset = 1, .size = 1}},
-      TokenInfo{Identifier{.name = "x"},
-                Position{.line = 2, .offset = 1, .size = 1}},
-      TokenInfo{EOFToken{}, Position{.line = 2, .offset = 2, .size = 0}},
+      TokenInfo{IntLiteral{.value = 1}, Position(1, 1, 1)},
+      TokenInfo{Identifier{.name = "x"}, Position(2, 1, 1)},
+      TokenInfo{EOFToken{}, Position(2, 2, 0)},
   };
 
   expect_tokens_eq(tokens, expected);
@@ -100,9 +95,8 @@ TEST(TokenizerMoreTests, OffsetCountsSpacesAfterNewline) {
   auto tokens = tokenize(code);
 
   std::deque<TokenInfo> expected{
-      TokenInfo{IntLiteral{.value = 42},
-                Position{.line = 2, .offset = 2, .size = 2}},
-      TokenInfo{EOFToken{}, Position{.line = 2, .offset = 4, .size = 0}},
+      TokenInfo{IntLiteral{.value = 42}, Position(2, 2, 2)},
+      TokenInfo{EOFToken{}, Position(2, 4, 0)},
   };
 
   expect_tokens_eq(tokens, expected);
@@ -118,9 +112,8 @@ TEST(TokenizerMoreTests, IdentifierWithUnderscore) {
   auto tokens = tokenize(code);
 
   std::deque<TokenInfo> expected{
-      TokenInfo{Identifier{.name = "var_name123"},
-                Position{.line = 1, .offset = 1, .size = 11}},
-      TokenInfo{EOFToken{}, Position{.line = 1, .offset = 12, .size = 0}},
+      TokenInfo{Identifier{.name = "var_name123"}, Position(1, 1, 11)},
+      TokenInfo{EOFToken{}, Position(1, 12, 0)},
   };
   expect_tokens_eq(tokens, expected);
 }
@@ -130,10 +123,10 @@ TEST(TokenizerMoreTests, KeywordsVarIfElse) {
   auto tokens = tokenize(code);
 
   std::deque<TokenInfo> expected{
-      TokenInfo{Var{}, Position{.line = 1, .offset = 1, .size = 3}},
-      TokenInfo{If{}, Position{.line = 1, .offset = 5, .size = 2}},
-      TokenInfo{Else{}, Position{.line = 1, .offset = 8, .size = 4}},
-      TokenInfo{EOFToken{}, Position{.line = 1, .offset = 12, .size = 0}},
+      TokenInfo{Var{}, Position(1, 1, 3)},
+      TokenInfo{If{}, Position(1, 5, 2)},
+      TokenInfo{Else{}, Position(1, 8, 4)},
+      TokenInfo{EOFToken{}, Position(1, 12, 0)},
   };
   expect_tokens_eq(tokens, expected);
 }
@@ -143,9 +136,8 @@ TEST(TokenizerMoreTests, FloatLiteralSimple) {
   auto tokens = tokenize(code);
 
   std::deque<TokenInfo> expected{
-      TokenInfo{FloatLiteral{.value = 12.34},
-                Position{.line = 1, .offset = 1, .size = 5}},
-      TokenInfo{EOFToken{}, Position{.line = 1, .offset = 6, .size = 0}},
+      TokenInfo{FloatLiteral{.value = 12.34}, Position(1, 1, 5)},
+      TokenInfo{EOFToken{}, Position(1, 6, 0)},
   };
   expect_tokens_eq(tokens, expected);
 }
@@ -155,13 +147,10 @@ TEST(TokenizerMoreTests, FloatAndIntSequence) {
   auto tokens = tokenize(code);
 
   std::deque<TokenInfo> expected{
-      TokenInfo{IntLiteral{.value = 1},
-                Position{.line = 1, .offset = 1, .size = 1}},
-      TokenInfo{FloatLiteral{.value = 2.5},
-                Position{.line = 1, .offset = 3, .size = 3}},
-      TokenInfo{IntLiteral{.value = 3},
-                Position{.line = 1, .offset = 7, .size = 1}},
-      TokenInfo{EOFToken{}, Position{.line = 1, .offset = 8, .size = 0}},
+      TokenInfo{IntLiteral{.value = 1}, Position(1, 1, 1)},
+      TokenInfo{FloatLiteral{.value = 2.5}, Position(1, 3, 3)},
+      TokenInfo{IntLiteral{.value = 3}, Position(1, 7, 1)},
+      TokenInfo{EOFToken{}, Position(1, 8, 0)},
   };
   expect_tokens_eq(tokens, expected);
 }
@@ -176,15 +165,12 @@ TEST(TokenizerMoreTests, MixedNoSpaces) {
   auto tokens = tokenize(code);
 
   std::deque<TokenInfo> expected{
-      TokenInfo{Identifier{.name = "a"},
-                Position{.line = 1, .offset = 1, .size = 1}},
-      TokenInfo{Plus{}, Position{.line = 1, .offset = 2, .size = 1}},
-      TokenInfo{Identifier{.name = "b"},
-                Position{.line = 1, .offset = 3, .size = 1}},
-      TokenInfo{Equal{}, Position{.line = 1, .offset = 4, .size = 2}},
-      TokenInfo{Identifier{.name = "c"},
-                Position{.line = 1, .offset = 6, .size = 1}},
-      TokenInfo{EOFToken{}, Position{.line = 1, .offset = 7, .size = 0}},
+      TokenInfo{Identifier{.name = "a"}, Position(1, 1, 1)},
+      TokenInfo{Plus{}, Position(1, 2, 1)},
+      TokenInfo{Identifier{.name = "b"}, Position(1, 3, 1)},
+      TokenInfo{Equal{}, Position(1, 4, 2)},
+      TokenInfo{Identifier{.name = "c"}, Position(1, 6, 1)},
+      TokenInfo{EOFToken{}, Position(1, 7, 0)},
   };
   expect_tokens_eq(tokens, expected);
 }
@@ -194,13 +180,12 @@ TEST(TokenizerMoreTests, SmallSnippetCombinedTokens) {
   auto tokens = tokenize(code);
 
   std::deque<TokenInfo> expected{
-      TokenInfo{Fn{}, Position{.line = 1, .offset = 1, .size = 2}},
-      TokenInfo{Identifier{.name = "add"},
-                Position{.line = 1, .offset = 4, .size = 3}},
-      TokenInfo{Arrow{}, Position{.line = 1, .offset = 8, .size = 2}},
-      TokenInfo{Var{}, Position{.line = 1, .offset = 11, .size = 3}},
-      TokenInfo{Semicolon{}, Position{.line = 1, .offset = 14, .size = 1}},
-      TokenInfo{EOFToken{}, Position{.line = 1, .offset = 15, .size = 0}},
+      TokenInfo{Fn{}, Position(1, 1, 2)},
+      TokenInfo{Identifier{.name = "add"}, Position(1, 4, 3)},
+      TokenInfo{Arrow{}, Position(1, 8, 2)},
+      TokenInfo{Var{}, Position(1, 11, 3)},
+      TokenInfo{Semicolon{}, Position(1, 14, 1)},
+      TokenInfo{EOFToken{}, Position(1, 15, 0)},
   };
   expect_tokens_eq(tokens, expected);
 }
@@ -211,8 +196,8 @@ TEST(StringLiteralTests, SimpleString) {
 
   std::deque<TokenInfo> expected{
       TokenInfo{StringLiteral{.value = std::string("hello")},
-                Position{.line = 1, .offset = 1, .size = code.size()}},
-      TokenInfo{EOFToken{}, Position{.line = 1, .offset = 8, .size = 0}}};
+                Position(1, 1, code.size())},
+      TokenInfo{EOFToken{}, Position(1, 8, 0)}};
 
   expect_tokens_eq(tokens, expected);
 }
@@ -223,8 +208,8 @@ TEST(StringLiteralTests, EmptyString) {
 
   std::deque<TokenInfo> expected{
       TokenInfo{StringLiteral{.value = std::string("")},
-                Position{.line = 1, .offset = 1, .size = code.size()}},
-      TokenInfo{EOFToken{}, Position{.line = 1, .offset = 3, .size = 0}}};
+                Position(1, 1, code.size())},
+      TokenInfo{EOFToken{}, Position(1, 3, 0)}};
 
   expect_tokens_eq(tokens, expected);
 }
@@ -237,9 +222,9 @@ TEST(StringLiteralTests, StringWithSpacesAndSymbols) {
 
   std::deque<TokenInfo> expected{
       TokenInfo{StringLiteral{.value = expected_value},
-                Position{.line = 1, .offset = 1, .size = code.size()}},
+                Position(1, 1, code.size())},
       TokenInfo{EOFToken{},
-                Position{.line = 1, .offset = code.size() + 1, .size = 0}}};
+                Position(1, static_cast<std::size_t>(code.size() + 1), 0)}};
 
   expect_tokens_eq(tokens, expected);
 }
@@ -253,13 +238,12 @@ TEST(StringLiteralTests, MultipleStringTokensSeparatedBySpace) {
 
   std::deque<TokenInfo> expected{
       TokenInfo{StringLiteral{.value = std::string("one")},
-                Position{.line = 1, .offset = 1, .size = first_size}},
+                Position(1, 1, first_size)},
       TokenInfo{StringLiteral{.value = std::string("two")},
-                Position{.line = 1,
-                         .offset = static_cast<std::size_t>(1 + first_size + 1),
-                         .size = second_size}},
+                Position(1, static_cast<std::size_t>(1 + first_size + 1),
+                         second_size)},
       TokenInfo{EOFToken{},
-                Position{.line = 1, .offset = code.size() + 1, .size = 0}},
+                Position(1, static_cast<std::size_t>(code.size() + 1), 0)},
   };
 
   expect_tokens_eq(tokens, expected);
@@ -273,9 +257,9 @@ TEST(StringLiteralTests, EscapedCharacters) {
 
   std::deque<TokenInfo> expected{
       TokenInfo{StringLiteral{.value = expected_value},
-                Position{.line = 1, .offset = 1, .size = code.size()}},
+                Position(1, 1, code.size())},
       TokenInfo{EOFToken{},
-                Position{.line = 1, .offset = code.size() + 1, .size = 0}}};
+                Position(1, static_cast<std::size_t>(code.size() + 1), 0)}};
 
   expect_tokens_eq(tokens, expected);
 }
@@ -293,9 +277,9 @@ TEST(StringLiteralTests, EscapedQuoteAtEnd) {
 
   std::deque<TokenInfo> expected{
       TokenInfo{StringLiteral{.value = expected_value},
-                Position{.line = 1, .offset = 1, .size = code.size()}},
+                Position(1, 1, code.size())},
       TokenInfo{EOFToken{},
-                Position{.line = 1, .offset = code.size() + 1, .size = 0}}};
+                Position(1, static_cast<std::size_t>(code.size() + 1), 0)}};
 
   expect_tokens_eq(tokens, expected);
 }
@@ -308,9 +292,9 @@ TEST(StringLiteralTests, StringContainingEscapedBackslashAndQuote) {
 
   std::deque<TokenInfo> expected{
       TokenInfo{StringLiteral{.value = expected_value},
-                Position{.line = 1, .offset = 1, .size = code.size()}},
+                Position(1, 1, code.size())},
       TokenInfo{EOFToken{},
-                Position{.line = 1, .offset = code.size() + 1, .size = 0}}};
+                Position(1, static_cast<std::size_t>(code.size() + 1), 0)}};
 
   expect_tokens_eq(tokens, expected);
 }

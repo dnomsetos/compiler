@@ -11,9 +11,12 @@ TEST(ParserTest, Test1) {
                          "    x"
                          "}");
   auto mr = std::pmr::monotonic_buffer_resource();
-  auto result = parse_program(tokens.begin(), tokens.end(), mr);
+
+  auto result = parse_program(tokens.begin(), tokens.end());
+
   std::unordered_map<std::string, calc_result> variables;
   auto execute_result = execute_program(*result.value().first, variables);
+
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(std::get<std::int64_t>(execute_result), 7);
 }
@@ -33,9 +36,12 @@ TEST(ParserTest, Test2) {
                          "    x"
                          "}");
   auto mr = std::pmr::monotonic_buffer_resource();
-  auto result = parse_program(tokens.begin(), tokens.end(), mr);
+
+  auto result = parse_program(tokens.begin(), tokens.end());
+
   std::unordered_map<std::string, calc_result> variables;
   auto execute_result = execute_program(*result.value().first, variables);
+
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(std::get<std::int64_t>(execute_result), 0);
 }
@@ -50,9 +56,12 @@ TEST(ParserTest, Test3) {
                          "    q"
                          "}");
   auto mr = std::pmr::monotonic_buffer_resource();
-  auto result = parse_program(tokens.begin(), tokens.end(), mr);
+
+  auto result = parse_program(tokens.begin(), tokens.end());
+
   std::unordered_map<std::string, calc_result> variables;
   auto execute_result = execute_program(*result.value().first, variables);
+
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(std::get<std::int64_t>(execute_result), 2);
 }
@@ -67,9 +76,12 @@ TEST(ParserTest, Test4) {
                          "    a"
                          "}");
   auto mr = std::pmr::monotonic_buffer_resource();
-  auto result = parse_program(tokens.begin(), tokens.end(), mr);
+
+  auto result = parse_program(tokens.begin(), tokens.end());
+
   std::unordered_map<std::string, calc_result> variables;
   auto execute_result = execute_program(*result.value().first, variables);
+
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(std::get<std::int64_t>(execute_result), 8);
 }
@@ -82,9 +94,12 @@ TEST(ParserTest, Test5) {
                          "    s"
                          "}");
   auto mr = std::pmr::monotonic_buffer_resource();
-  auto result = parse_program(tokens.begin(), tokens.end(), mr);
+
+  auto result = parse_program(tokens.begin(), tokens.end());
+
   std::unordered_map<std::string, calc_result> variables;
   auto execute_result = execute_program(*result.value().first, variables);
+
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(std::get<std::string>(execute_result), "Hello, world");
 }
@@ -99,9 +114,12 @@ TEST(ParserTest, Test6) {
                          "    f"
                          "}");
   auto mr = std::pmr::monotonic_buffer_resource();
-  auto result = parse_program(tokens.begin(), tokens.end(), mr);
+
+  auto result = parse_program(tokens.begin(), tokens.end());
+
   std::unordered_map<std::string, calc_result> variables;
   auto execute_result = execute_program(*result.value().first, variables);
+
   ASSERT_TRUE(result.has_value());
   ASSERT_DOUBLE_EQ(std::get<double>(execute_result), 13.14);
 }
@@ -122,9 +140,12 @@ TEST(ParserTest, Test7) {
                          "    x * x"
                          "}");
   auto mr = std::pmr::monotonic_buffer_resource();
-  auto result = parse_program(tokens.begin(), tokens.end(), mr);
+
+  auto result = parse_program(tokens.begin(), tokens.end());
+
   std::unordered_map<std::string, calc_result> variables;
   auto execute_result = execute_program(*result.value().first, variables);
+
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(std::get<std::int64_t>(execute_result), 9);
 }
@@ -138,9 +159,12 @@ TEST(ParserTest, Test8) {
                          "    ok"
                          "}");
   auto mr = std::pmr::monotonic_buffer_resource();
-  auto result = parse_program(tokens.begin(), tokens.end(), mr);
+
+  auto result = parse_program(tokens.begin(), tokens.end());
+
   std::unordered_map<std::string, calc_result> variables;
   auto execute_result = execute_program(*result.value().first, variables);
+
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(std::get<bool>(execute_result), false);
 }
@@ -153,9 +177,12 @@ TEST(ParserTest, Test9) {
                          "    tmp"
                          "}");
   auto mr = std::pmr::monotonic_buffer_resource();
-  auto result = parse_program(tokens.begin(), tokens.end(), mr);
+
+  auto result = parse_program(tokens.begin(), tokens.end());
+
   std::unordered_map<std::string, calc_result> variables;
   auto execute_result = execute_program(*result.value().first, variables);
+
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(std::get<std::int64_t>(execute_result), 15);
 }
@@ -174,7 +201,9 @@ TEST(ParserTest, Test10) {
                          "    y"
                          "}");
   auto mr = std::pmr::monotonic_buffer_resource();
-  auto result = parse_program(tokens.begin(), tokens.end(), mr);
+
+  auto result = parse_program(tokens.begin(), tokens.end());
+
   ASSERT_TRUE(result.has_value());
 }
 
@@ -193,7 +222,9 @@ TEST(ParserTest, Test11) {
                "    y"
                "}");
   auto mr = std::pmr::monotonic_buffer_resource();
-  auto result = parse_program(tokens.begin(), tokens.end(), mr);
+
+  auto result = parse_program(tokens.begin(), tokens.end());
+
   ASSERT_TRUE(result.has_value());
 }
 
@@ -212,6 +243,8 @@ TEST(ParserTest, Test12) {
                "    y"
                "}");
   auto mr = std::pmr::monotonic_buffer_resource();
-  auto result = parse_program(tokens.begin(), tokens.end(), mr);
+
+  auto result = parse_program(tokens.begin(), tokens.end());
+
   ASSERT_TRUE(result.has_value());
 }

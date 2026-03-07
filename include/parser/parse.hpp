@@ -2,11 +2,11 @@
 
 #include <deque>
 #include <expected>
-#include <memory_resource>
 #include <stdexcept>
 
 #include <parser/ast.hpp>
 #include <scanner/token.hpp>
+#include <utility/ast_allocator.hpp>
 #include <utility/type_tuple.hpp>
 
 struct UnexpectedToken : tkn::Position {
@@ -50,60 +50,47 @@ struct TryButCant : std::runtime_error, tkn::Position {
 using ParseIter = std::deque<tkn::TokenInfo>::const_iterator;
 
 template <typename T>
-using ParseResult =
-    std::expected<std::pair<std::unique_ptr<T, PmrDeleter<T>>, ParseIter>,
-                  std::variant<UnexpectedToken, TryButCant>>;
+using ParseResult = std::expected<
+    std::pair<std::unique_ptr<T, ast::alloc::MonotonicBufferResourceDeleter<T>>,
+              ParseIter>,
+    std::variant<UnexpectedToken, TryButCant>>;
 
-auto parse_program(ParseIter begin, ParseIter end,
-                   std::pmr::memory_resource& mr) -> ParseResult<ast::Program>;
+auto parse_program(ParseIter begin, ParseIter end) -> ParseResult<ast::Program>;
 
-auto parse_function_definition(ParseIter begin, std::pmr::memory_resource& mr)
+auto parse_function_definition(ParseIter begin)
     -> ParseResult<ast::FunctionDefinitionNode>;
 
-auto parse_variable_definition(ParseIter begin, std::pmr::memory_resource& mr)
+auto parse_variable_definition(ParseIter begin)
     -> ParseResult<ast::VariableDefinitionNode>;
 
-auto parse_if_statement(ParseIter begin, std::pmr::memory_resource& mr)
-    -> ParseResult<ast::IfStatementNode>;
+auto parse_if_statement(ParseIter begin) -> ParseResult<ast::IfStatementNode>;
 
-auto parse_statement(ParseIter begin, std::pmr::memory_resource& mr)
-    -> ParseResult<ast::StatementNode>;
+auto parse_statement(ParseIter begin) -> ParseResult<ast::StatementNode>;
 
-auto parse_expression(ParseIter begin, std::pmr::memory_resource& mr)
-    -> ParseResult<ast::ExpressionNode>;
+auto parse_expression(ParseIter begin) -> ParseResult<ast::ExpressionNode>;
 
-auto parse_assignment(ParseIter begin, std::pmr::memory_resource& mr)
-    -> ParseResult<ast::AssignmentNode>;
+auto parse_assignment(ParseIter begin) -> ParseResult<ast::AssignmentNode>;
 
-inline auto parse_or(ParseIter begin, std::pmr::memory_resource& mr)
-    -> ParseResult<ast::OrNode>;
+inline auto parse_or(ParseIter begin) -> ParseResult<ast::OrNode>;
 
-inline auto parse_xor(ParseIter begin, std::pmr::memory_resource& mr)
-    -> ParseResult<ast::XorNode>;
+inline auto parse_xor(ParseIter begin) -> ParseResult<ast::XorNode>;
 
-inline auto parse_and(ParseIter begin, std::pmr::memory_resource& mr)
-    -> ParseResult<ast::AndNode>;
+inline auto parse_and(ParseIter begin) -> ParseResult<ast::AndNode>;
 
-inline auto parse_equality(ParseIter begin, std::pmr::memory_resource& mr)
-    -> ParseResult<ast::EqualityNode>;
+inline auto parse_equality(ParseIter begin) -> ParseResult<ast::EqualityNode>;
 
-inline auto parse_comparison(ParseIter begin, std::pmr::memory_resource& mr)
+inline auto parse_comparison(ParseIter begin)
     -> ParseResult<ast::ComparisonNode>;
 
-inline auto parse_addition(ParseIter begin, std::pmr::memory_resource& mr)
-    -> ParseResult<ast::AdditionNode>;
+inline auto parse_addition(ParseIter begin) -> ParseResult<ast::AdditionNode>;
 
-inline auto parse_multiplication(ParseIter begin, std::pmr::memory_resource& mr)
+inline auto parse_multiplication(ParseIter begin)
     -> ParseResult<ast::MultiplicationNode>;
 
-auto parse_unary(ParseIter begin, std::pmr::memory_resource& mr)
-    -> ParseResult<ast::UnaryNode>;
+auto parse_unary(ParseIter begin) -> ParseResult<ast::UnaryNode>;
 
-auto parse_primary(ParseIter begin, std::pmr::memory_resource& mr)
-    -> ParseResult<ast::PrimaryNode>;
+auto parse_primary(ParseIter begin) -> ParseResult<ast::PrimaryNode>;
 
-auto parse_literal(ParseIter begin, std::pmr::memory_resource& mr)
-    -> ParseResult<ast::LiteralNode>;
+auto parse_literal(ParseIter begin) -> ParseResult<ast::LiteralNode>;
 
-auto parse_identifier(ParseIter begin, std::pmr::memory_resource& mr)
-    -> ParseResult<ast::IdentifierNode>;
+auto parse_identifier(ParseIter begin) -> ParseResult<ast::IdentifierNode>;

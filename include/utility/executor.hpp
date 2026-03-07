@@ -1,6 +1,5 @@
 #pragma once
 
-#include <iostream>
 #include <unordered_map>
 
 #include <parser/ast.hpp>
@@ -9,6 +8,13 @@ struct Dummy {};
 
 using calc_result =
     std::variant<std::int64_t, double, bool, std::string, Dummy>;
+
+inline const std::pair<std::string, calc_result> default_value_table[] = {
+    {"int", 0},
+    {"float", 0.0},
+    {"bool", false},
+    {"str", ""},
+};
 
 calc_result
 execute_program(const ast::Program& program,
