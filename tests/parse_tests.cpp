@@ -14,7 +14,7 @@ TEST(ParserTest, Test1) {
 
   auto result = parse_program(tokens.begin(), tokens.end());
 
-  std::unordered_map<std::string, calc_result> variables;
+  std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
   ASSERT_TRUE(result.has_value());
@@ -39,7 +39,7 @@ TEST(ParserTest, Test2) {
 
   auto result = parse_program(tokens.begin(), tokens.end());
 
-  std::unordered_map<std::string, calc_result> variables;
+  std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
   ASSERT_TRUE(result.has_value());
@@ -59,7 +59,7 @@ TEST(ParserTest, Test3) {
 
   auto result = parse_program(tokens.begin(), tokens.end());
 
-  std::unordered_map<std::string, calc_result> variables;
+  std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
   ASSERT_TRUE(result.has_value());
@@ -79,7 +79,7 @@ TEST(ParserTest, Test4) {
 
   auto result = parse_program(tokens.begin(), tokens.end());
 
-  std::unordered_map<std::string, calc_result> variables;
+  std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
   ASSERT_TRUE(result.has_value());
@@ -97,7 +97,7 @@ TEST(ParserTest, Test5) {
 
   auto result = parse_program(tokens.begin(), tokens.end());
 
-  std::unordered_map<std::string, calc_result> variables;
+  std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
   ASSERT_TRUE(result.has_value());
@@ -117,7 +117,7 @@ TEST(ParserTest, Test6) {
 
   auto result = parse_program(tokens.begin(), tokens.end());
 
-  std::unordered_map<std::string, calc_result> variables;
+  std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
   ASSERT_TRUE(result.has_value());
@@ -143,7 +143,7 @@ TEST(ParserTest, Test7) {
 
   auto result = parse_program(tokens.begin(), tokens.end());
 
-  std::unordered_map<std::string, calc_result> variables;
+  std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
   ASSERT_TRUE(result.has_value());
@@ -162,7 +162,7 @@ TEST(ParserTest, Test8) {
 
   auto result = parse_program(tokens.begin(), tokens.end());
 
-  std::unordered_map<std::string, calc_result> variables;
+  std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
   ASSERT_TRUE(result.has_value());
@@ -180,7 +180,7 @@ TEST(ParserTest, Test9) {
 
   auto result = parse_program(tokens.begin(), tokens.end());
 
-  std::unordered_map<std::string, calc_result> variables;
+  std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
   ASSERT_TRUE(result.has_value());

@@ -101,9 +101,9 @@ void read_float_or_int_literal(const std::string& code, std::size_t& i,
   i = new_i;
 }
 
-void read_identrifier_or_keyword(const std::string& code, std::size_t& i,
-                                 tkn::Point& current_position,
-                                 std::deque<tkn::TokenInfo>& tokens) {
+void read_identifier_or_keyword(const std::string& code, std::size_t& i,
+                                tkn::Point& current_position,
+                                std::deque<tkn::TokenInfo>& tokens) {
 
   auto [name, new_i] = read_string<DummyConverter>(code, i, identifier_filter);
 
@@ -227,7 +227,7 @@ auto tokenize(const std::string& code) -> std::deque<tkn::TokenInfo> {
     if (c >= '0' && c <= '9') {
       read_float_or_int_literal(code, i, current_position, tokens);
     } else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
-      read_identrifier_or_keyword(code, i, current_position, tokens);
+      read_identifier_or_keyword(code, i, current_position, tokens);
     } else if (c == '"') {
       read_string_literal(code, i, current_position, tokens);
     } else {

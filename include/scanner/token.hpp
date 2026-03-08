@@ -114,19 +114,19 @@ using TokenTuple =
 struct Point {
   std::size_t line;
   std::size_t offset;
+
+  friend bool operator==(const Point& left, const Point& right) = default;
 };
 
 struct Position {
-  std::size_t line;
-  std::size_t offset;
+  Point start;
   std::size_t size;
 
   Position(std::size_t line, std::size_t offset, std::size_t size)
-      : line(line), offset(offset), size(size) {}
+      : start{.line = line, .offset = offset}, size(size) {}
 
   Position(Point start, Point end)
-      : line(start.line), offset(start.offset),
-        size(end.offset - start.offset) {}
+      : start{start}, size(end.offset - start.offset) {}
 
   friend bool operator==(const Position& left, const Position& right) = default;
 };

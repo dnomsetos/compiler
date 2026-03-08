@@ -10,7 +10,7 @@
 
 void execute_variable_definition(
     const ast::VariableDefinitionNode& var_def,
-    std::unordered_map<std::string, calc_result>& variables) {
+    std::unordered_map<std::string, calc_result_t>& variables) {
 
   if (var_def.value.has_value()) {
     auto value = execute_expression(*var_def.value.value(), variables);
@@ -48,9 +48,9 @@ void execute_variable_definition(
   }
 }
 
-calc_result
+calc_result_t
 execute_program(const ast::Program& program,
-                std::unordered_map<std::string, calc_result>& variables) {
+                std::unordered_map<std::string, calc_result_t>& variables) {
 
   const ast::FunctionDefinitionNode* main = nullptr;
 
@@ -86,7 +86,7 @@ execute_program(const ast::Program& program,
 
 void execute_statement(
     const ast::StatementNode& statement,
-    std::unordered_map<std::string, calc_result>& variables) {
+    std::unordered_map<std::string, calc_result_t>& variables) {
 
   if (std::holds_alternative<ast::ExpressionNode>(*statement.node)) {
     execute_expression(std::get<ast::ExpressionNode>(*statement.node),
@@ -136,9 +136,9 @@ void execute_statement(
   }
 }
 
-calc_result
+calc_result_t
 execute_expression(const ast::ExpressionNode& expression,
-                   std::unordered_map<std::string, calc_result>& variables) {
+                   std::unordered_map<std::string, calc_result_t>& variables) {
 
   if (std::holds_alternative<ast::AssignmentNode>(*expression.node)) {
     auto& assignment = std::get<ast::AssignmentNode>(*expression.node);
@@ -172,11 +172,11 @@ template <typename... Ts>
 struct is_variant<std::variant<Ts...>> : std::true_type {};
 
 template <typename NodeT, typename PrevExecFn, typename OpHandler>
-calc_result
-execute_binary_op_impl(const NodeT& expression,
-                       std::unordered_map<std::string, calc_result>& variables,
-                       PrevExecFn prev_exec, OpHandler op_handler,
-                       const char* type_name_for_error) {
+calc_result_t execute_binary_op_impl(
+    const NodeT& expression,
+    std::unordered_map<std::string, calc_result_t>& variables,
+    PrevExecFn prev_exec, OpHandler op_handler,
+    const char* type_name_for_error) {
 
   auto left = prev_exec(*expression.left, variables);
 
@@ -190,7 +190,7 @@ execute_binary_op_impl(const NodeT& expression,
 
     left = std::visit(
         [&op_handler, &op]<typename T1, typename T2>(T1&& l,
-                                                     T2&& r) -> calc_result {
+                                                     T2&& r) -> calc_result_t {
           auto res = op_handler(op, std::forward<T1>(l), std::forward<T2>(r));
 
           if (res.has_value()) {
@@ -204,13 +204,13 @@ execute_binary_op_impl(const NodeT& expression,
   return left;
 }
 
-calc_result
+calc_result_t
 execute_or(const ast::OrNode& expression,
-           std::unordered_map<std::string, calc_result>& variables) {
+           std::unordered_map<std::string, calc_result_t>& variables) {
 
   return execute_binary_op_impl(
       expression, variables, execute_xor,
-      [](auto const& op, auto&& l, auto&& r) -> std::optional<calc_result> {
+      [](auto const& op, auto&& l, auto&& r) -> std::optional<calc_result_t> {
         if (op == tkn::Or{}) {
           if constexpr (requires { l | r; }) {
             return l | r;
@@ -221,13 +221,13 @@ execute_or(const ast::OrNode& expression,
       "logical expression");
 }
 
-calc_result
+calc_result_t
 execute_xor(const ast::XorNode& expression,
-            std::unordered_map<std::string, calc_result>& variables) {
+            std::unordered_map<std::string, calc_result_t>& variables) {
 
   return execute_binary_op_impl(
       expression, variables, execute_and,
-      [](auto const& op, auto&& l, auto&& r) -> std::optional<calc_result> {
+      [](auto const& op, auto&& l, auto&& r) -> std::optional<calc_result_t> {
         if (op == tkn::Xor{}) {
           if constexpr (requires { l ^ r; }) {
             return l ^ r;
@@ -239,13 +239,13 @@ execute_xor(const ast::XorNode& expression,
       "logical expression");
 }
 
-calc_result
+calc_result_t
 execute_and(const ast::AndNode& expression,
-            std::unordered_map<std::string, calc_result>& variables) {
+            std::unordered_map<std::string, calc_result_t>& variables) {
 
   return execute_binary_op_impl(
       expression, variables, execute_equality,
-      [](auto const& op, auto&& l, auto&& r) -> std::optional<calc_result> {
+      [](auto const& op, auto&& l, auto&& r) -> std::optional<calc_result_t> {
         if (op == tkn::And{}) {
           if constexpr (requires { l & r; }) {
             return l & r;
@@ -256,13 +256,13 @@ execute_and(const ast::AndNode& expression,
       "logical expression");
 }
 
-calc_result
+calc_result_t
 execute_equality(const ast::EqualityNode& expression,
-                 std::unordered_map<std::string, calc_result>& variables) {
+                 std::unordered_map<std::string, calc_result_t>& variables) {
 
   return execute_binary_op_impl(
       expression, variables, execute_comparison,
-      [](auto const& op, auto&& l, auto&& r) -> std::optional<calc_result> {
+      [](auto const& op, auto&& l, auto&& r) -> std::optional<calc_result_t> {
         if constexpr (requires { l == r; }) {
           if (std::holds_alternative<tkn::Equal>(op))
             return l == r;
@@ -277,13 +277,13 @@ execute_equality(const ast::EqualityNode& expression,
       "equality expression");
 }
 
-calc_result
+calc_result_t
 execute_comparison(const ast::ComparisonNode& expression,
-                   std::unordered_map<std::string, calc_result>& variables) {
+                   std::unordered_map<std::string, calc_result_t>& variables) {
 
   return execute_binary_op_impl(
       expression, variables, execute_addition,
-      [](auto const& op, auto&& l, auto&& r) -> std::optional<calc_result> {
+      [](auto const& op, auto&& l, auto&& r) -> std::optional<calc_result_t> {
         if constexpr (requires { l < r; }) {
           if (std::holds_alternative<tkn::Less>(op))
             return l < r;
@@ -308,13 +308,13 @@ execute_comparison(const ast::ComparisonNode& expression,
       "comparison expression");
 }
 
-calc_result
+calc_result_t
 execute_addition(const ast::AdditionNode& expression,
-                 std::unordered_map<std::string, calc_result>& variables) {
+                 std::unordered_map<std::string, calc_result_t>& variables) {
 
   return execute_binary_op_impl(
       expression, variables, execute_multiplication,
-      [](auto const& op, auto&& l, auto&& r) -> std::optional<calc_result> {
+      [](auto const& op, auto&& l, auto&& r) -> std::optional<calc_result_t> {
         if constexpr (requires { l + r; }) {
           if (std::holds_alternative<tkn::Plus>(op))
             return l + r;
@@ -329,13 +329,13 @@ execute_addition(const ast::AdditionNode& expression,
       "addition expression");
 }
 
-calc_result execute_multiplication(
+calc_result_t execute_multiplication(
     const ast::MultiplicationNode& expression,
-    std::unordered_map<std::string, calc_result>& variables) {
+    std::unordered_map<std::string, calc_result_t>& variables) {
 
   return execute_binary_op_impl(
       expression, variables, execute_unary,
-      [](auto const& op, auto&& l, auto&& r) -> std::optional<calc_result> {
+      [](auto const& op, auto&& l, auto&& r) -> std::optional<calc_result_t> {
         if constexpr (requires { l * r; }) {
           if (std::holds_alternative<tkn::Multiply>(op))
             return l * r;
@@ -355,9 +355,9 @@ calc_result execute_multiplication(
       "multiplication expression");
 }
 
-calc_result
+calc_result_t
 execute_unary(const ast::UnaryNode& expression,
-              std::unordered_map<std::string, calc_result>& variables) {
+              std::unordered_map<std::string, calc_result_t>& variables) {
 
   auto result = execute_primary(*expression.primary, variables);
 
@@ -367,7 +367,7 @@ execute_unary(const ast::UnaryNode& expression,
 
   if (std::holds_alternative<tkn::Plus>(*expression.op.value())) {
     return std::visit(
-        [](auto&& result) -> calc_result {
+        [](auto&& result) -> calc_result_t {
           if constexpr (requires { +result; }) {
             return +result;
           }
@@ -378,7 +378,7 @@ execute_unary(const ast::UnaryNode& expression,
 
   if (std::holds_alternative<tkn::Minus>(*expression.op.value())) {
     return std::visit(
-        [](auto&& result) -> calc_result {
+        [](auto&& result) -> calc_result_t {
           if constexpr (requires { -result; }) {
             return -result;
           }
@@ -389,7 +389,7 @@ execute_unary(const ast::UnaryNode& expression,
 
   if (std::holds_alternative<tkn::Not>(*expression.op.value())) {
     return std::visit(
-        [](auto&& result) -> calc_result {
+        [](auto&& result) -> calc_result_t {
           if constexpr (requires { !result; }) {
             return !result;
           }
@@ -401,9 +401,9 @@ execute_unary(const ast::UnaryNode& expression,
   return result;
 }
 
-calc_result
+calc_result_t
 execute_primary(const ast::PrimaryNode& expression,
-                std::unordered_map<std::string, calc_result>& variables) {
+                std::unordered_map<std::string, calc_result_t>& variables) {
 
   if (std::holds_alternative<ast::IdentifierNode>(*expression.primary)) {
     auto& id =

@@ -22,21 +22,15 @@ using pmr_unique_ptr =
 struct LiteralNode : ASTNode {
   pmr_unique_ptr<type_tuple_to_variant_t<tkn::LiteralTuple>> literal;
 
-  template <typename T>
-  LiteralNode(T&& literal, const tkn::Position& position)
-      : ASTNode(position),
-        literal{
-            alloc::make_unique_pmr<type_tuple_to_variant_t<tkn::LiteralTuple>>(
-                std::forward<T>(literal))} {}
+  LiteralNode(const type_tuple_to_variant_t<tkn::LiteralTuple>& literal,
+              const tkn::Position& position);
 };
 
 struct IdentifierNode : ASTNode {
   pmr_unique_ptr<tkn::Identifier> identifier;
 
   IdentifierNode(const tkn::Identifier& identifier,
-                 const tkn::Position& position)
-      : ASTNode(position),
-        identifier{alloc::make_unique_pmr<tkn::Identifier>(identifier)} {}
+                 const tkn::Position& position);
 };
 
 struct ExpressionNode;
@@ -45,6 +39,14 @@ struct FunctionCallNode;
 
 using PrimaryNodeTuple =
     TypeTuple<LiteralNode, IdentifierNode, ExpressionNode, FunctionCallNode>;
+
+struct FunctionCallNode : ASTNode {
+  pmr_unique_ptr<IdentifierNode> name;
+  std::pmr::vector<ExpressionNode> arguments;
+
+  FunctionCallNode(pmr_unique_ptr<IdentifierNode>&& name,
+                   const tkn::Position& position);
+};
 
 struct PrimaryNode : Storage<tkn::Position, Type> {
   pmr_unique_ptr<type_tuple_to_variant_t<PrimaryNodeTuple>> primary;
@@ -107,54 +109,17 @@ struct AssignmentNode : Storage<tkn::Position, Type> {
 struct ExpressionNode : Storage<tkn::Position, Type> {
   pmr_unique_ptr<std::variant<OrNode, AssignmentNode>> node;
 
-  template <typename T>
-  ExpressionNode(T&& node, const tkn::Position& position)
-      : Storage<tkn::Position, Type>(position, Type{}),
-        node{alloc::make_unique_pmr<std::variant<OrNode, AssignmentNode>>(
-            std::forward<T>(node))} {}
+  ExpressionNode(std::variant<OrNode, AssignmentNode>&& node,
+                 const tkn::Position& position);
 };
 
-struct FunctionCallNode : ASTNode {
-  pmr_unique_ptr<IdentifierNode> name;
-  std::pmr::vector<ExpressionNode> arguments;
-
-  FunctionCallNode(pmr_unique_ptr<IdentifierNode>&& name,
-                   const tkn::Position& position)
-      : ASTNode(position), name{std::move(name)}, arguments{&alloc::mr} {}
-};
-
-struct IfStatementNode;
-
-struct VariableDefinitionNode : ASTNode {
-  pmr_unique_ptr<IdentifierNode> name;
-  std::optional<pmr_unique_ptr<IdentifierNode>> type;
-  std::optional<pmr_unique_ptr<ExpressionNode>> value;
-
-  template <typename T>
-  VariableDefinitionNode(T&& name, const tkn::Position& position)
-      : ASTNode(position), name{std::forward<T>(name)} {}
-};
-
-struct StatementNode : ASTNode {
-  pmr_unique_ptr<
-      std::variant<ExpressionNode, IfStatementNode, VariableDefinitionNode>>
-      node;
-
-  template <typename T>
-  StatementNode(T&& node, const tkn::Position& position)
-      : ASTNode(position),
-        node{
-            alloc::make_unique_pmr<std::variant<ExpressionNode, IfStatementNode,
-                                                VariableDefinitionNode>>(
-                std::forward<T>(node))} {}
-};
+struct StatementNode;
 
 struct ExpressionStatements {
   ExpressionNode expr;
   std::pmr::vector<StatementNode> statements;
 
-  ExpressionStatements(ExpressionNode&& expr)
-      : expr{std::move(expr)}, statements{&alloc::mr} {}
+  ExpressionStatements(ExpressionNode&& expr);
 };
 
 struct IfStatementNode : ASTNode {
@@ -163,10 +128,27 @@ struct IfStatementNode : ASTNode {
   std::pmr::vector<ExpressionStatements> elif_bodies;
   std::pmr::vector<StatementNode> else_body;
 
-  template <typename T>
-  IfStatementNode(T&& condition, const tkn::Position& position)
-      : ASTNode(position), condition{std::forward<T>(condition)},
-        body{&alloc::mr}, elif_bodies{&alloc::mr}, else_body{&alloc::mr} {}
+  IfStatementNode(pmr_unique_ptr<ExpressionNode>&& condition,
+                  const tkn::Position& position);
+};
+
+struct VariableDefinitionNode : ASTNode {
+  pmr_unique_ptr<IdentifierNode> name;
+  std::optional<pmr_unique_ptr<IdentifierNode>> type;
+  std::optional<pmr_unique_ptr<ExpressionNode>> value;
+
+  VariableDefinitionNode(pmr_unique_ptr<IdentifierNode>&& name,
+                         const tkn::Position& position);
+};
+
+struct StatementNode : ASTNode {
+  pmr_unique_ptr<
+      std::variant<ExpressionNode, IfStatementNode, VariableDefinitionNode>>
+      node;
+
+  StatementNode(std::variant<ExpressionNode, IfStatementNode,
+                             VariableDefinitionNode>&& node,
+                const tkn::Position& position);
 };
 
 struct FunctionDefinitionNode : ASTNode {
@@ -176,10 +158,8 @@ struct FunctionDefinitionNode : ASTNode {
   std::pmr::vector<StatementNode> body;
   pmr_unique_ptr<ExpressionNode> return_value;
 
-  template <typename T>
-  FunctionDefinitionNode(T&& name, const tkn::Position& position)
-      : ASTNode(position), name{std::forward<T>(name)},
-        argument_lits{&alloc::mr}, body{&alloc::mr} {}
+  FunctionDefinitionNode(pmr_unique_ptr<IdentifierNode>&& name,
+                         const tkn::Position& position);
 };
 
 using DefinitionTuple =
