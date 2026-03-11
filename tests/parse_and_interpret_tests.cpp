@@ -37,7 +37,7 @@ TEST(ParserTest, Test2) {
                          "        x = 0;"
                          "    } else {"
                          "        x = 1;"
-                         "    }"
+                         "    };"
                          "    x"
                          "}");
   auto mr = std::pmr::monotonic_buffer_resource();
@@ -158,10 +158,10 @@ TEST(ParserTest, Test7) {
                          "            x = x - 10;"
                          "        } else {"
                          "            x = x - 1;"
-                         "        }"
+                         "        };"
                          "    } else {"
                          "        x = x + 1;"
-                         "    }"
+                         "    };"
                          "    x * x"
                          "}");
   auto mr = std::pmr::monotonic_buffer_resource();

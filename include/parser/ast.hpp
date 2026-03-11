@@ -106,30 +106,45 @@ struct AssignmentNode : Storage<tkn::Position, Type> {
         left{std::forward<T1>(left)}, right{std::forward<T2>(right)} {}
 };
 
-struct ExpressionNode : Storage<tkn::Position, Type> {
-  pmr_unique_ptr<std::variant<OrNode, AssignmentNode>> node;
+struct StatementNode;
 
-  ExpressionNode(std::variant<OrNode, AssignmentNode>&& node,
+struct BlockExpressionNode : ASTNode {
+  std::pmr::vector<StatementNode> statements;
+  std::optional<pmr_unique_ptr<ExpressionNode>> value;
+
+  BlockExpressionNode(const tkn::Position& position);
+};
+
+struct ExpressionStatements;
+
+struct IfExpressionNode : ASTNode {
+  pmr_unique_ptr<ExpressionNode> condition;
+  pmr_unique_ptr<BlockExpressionNode> body;
+  std::pmr::vector<ExpressionStatements> elif_bodies;
+  std::optional<pmr_unique_ptr<BlockExpressionNode>> else_body;
+
+  IfExpressionNode(pmr_unique_ptr<ExpressionNode>&& condition,
+                   pmr_unique_ptr<BlockExpressionNode>&& body,
+                   const tkn::Position& position);
+};
+
+struct ExpressionNode : Storage<tkn::Position, Type> {
+  pmr_unique_ptr<std::variant<OrNode, AssignmentNode, IfExpressionNode,
+                              BlockExpressionNode>>
+      node;
+
+  ExpressionNode(std::variant<OrNode, AssignmentNode, IfExpressionNode,
+                              BlockExpressionNode>&& node,
                  const tkn::Position& position);
 };
 
-struct StatementNode;
+struct ExpressionStatements : ASTNode {
+  pmr_unique_ptr<ExpressionNode> expr;
+  pmr_unique_ptr<BlockExpressionNode> block;
 
-struct ExpressionStatements {
-  ExpressionNode expr;
-  std::pmr::vector<StatementNode> statements;
-
-  ExpressionStatements(ExpressionNode&& expr);
-};
-
-struct IfStatementNode : ASTNode {
-  pmr_unique_ptr<ExpressionNode> condition;
-  std::pmr::vector<StatementNode> body;
-  std::pmr::vector<ExpressionStatements> elif_bodies;
-  std::pmr::vector<StatementNode> else_body;
-
-  IfStatementNode(pmr_unique_ptr<ExpressionNode>&& condition,
-                  const tkn::Position& position);
+  ExpressionStatements(pmr_unique_ptr<ExpressionNode>&& expr,
+                       pmr_unique_ptr<BlockExpressionNode>&& block,
+                       const tkn::Position& position);
 };
 
 struct VariableDefinitionNode : ASTNode {
@@ -142,12 +157,9 @@ struct VariableDefinitionNode : ASTNode {
 };
 
 struct StatementNode : ASTNode {
-  pmr_unique_ptr<
-      std::variant<ExpressionNode, IfStatementNode, VariableDefinitionNode>>
-      node;
+  pmr_unique_ptr<std::variant<ExpressionNode, VariableDefinitionNode>> node;
 
-  StatementNode(std::variant<ExpressionNode, IfStatementNode,
-                             VariableDefinitionNode>&& node,
+  StatementNode(std::variant<ExpressionNode, VariableDefinitionNode>&& node,
                 const tkn::Position& position);
 };
 
@@ -155,8 +167,7 @@ struct FunctionDefinitionNode : ASTNode {
   pmr_unique_ptr<IdentifierNode> name;
   std::pmr::vector<std::pair<IdentifierNode, IdentifierNode>> argument_list;
   pmr_unique_ptr<IdentifierNode> return_type;
-  std::pmr::vector<StatementNode> body;
-  pmr_unique_ptr<ExpressionNode> return_value;
+  pmr_unique_ptr<BlockExpressionNode> body;
 
   FunctionDefinitionNode(pmr_unique_ptr<IdentifierNode>&& name,
                          const tkn::Position& position);
@@ -193,7 +204,8 @@ CREATE_NODE_NAME(UnaryNode, "unary")
 CREATE_NODE_NAME(PrimaryNode, "primary")
 CREATE_NODE_NAME(ExpressionNode, "expression")
 CREATE_NODE_NAME(StatementNode, "statement")
-CREATE_NODE_NAME(IfStatementNode, "if statement")
+CREATE_NODE_NAME(BlockExpressionNode, "block expression")
+CREATE_NODE_NAME(IfExpressionNode, "if expression")
 CREATE_NODE_NAME(VariableDefinitionNode, "variable definition")
 CREATE_NODE_NAME(FunctionDefinitionNode, "function definition")
 

@@ -13,6 +13,10 @@ public:
 
   calc_result_t operator()(const ast::ExpressionNode& expression);
 
+  calc_result_t operator()(const ast::BlockExpressionNode& expression);
+
+  calc_result_t operator()(const ast::IfExpressionNode& expression);
+
   calc_result_t operator()(const ast::AssignmentNode& assignment);
 
   template <typename BinaryNode>
@@ -23,8 +27,6 @@ public:
   calc_result_t operator()(const ast::PrimaryNode& primary_node);
 
   calc_result_t operator()(const ast::StatementNode& statement);
-
-  calc_result_t operator()(const ast::IfStatementNode& if_statement);
 
   calc_result_t operator()(const ast::VariableDefinitionNode& var_def);
 

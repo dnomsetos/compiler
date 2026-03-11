@@ -1,3 +1,4 @@
+#include "scanner/token.hpp"
 #include <iostream>
 #include <stdexcept>
 #include <type_traits>
@@ -60,13 +61,51 @@ InterpreterVisitor::operator()(const ast::FunctionCallNode& fn_call) {
 
 calc_result_t
 InterpreterVisitor::operator()(const ast::ExpressionNode& exprsession) {
-  if (std::holds_alternative<ast::AssignmentNode>(*exprsession.node)) {
-    return operator()(std::get<ast::AssignmentNode>(*exprsession.node));
-  } else if (std::holds_alternative<ast::OrNode>(*exprsession.node)) {
-    return operator()(std::get<ast::OrNode>(*exprsession.node));
+  return std::visit(*this, *exprsession.node);
+}
+
+calc_result_t
+InterpreterVisitor::operator()(const ast::BlockExpressionNode& expression) {
+  for (auto& stmt : expression.statements) {
+    operator()(stmt);
   }
 
-  throw std::runtime_error("unknown expression");
+  if (!expression.value.has_value()) {
+    return Dummy{};
+  }
+
+  return operator()(*expression.value.value());
+}
+
+calc_result_t
+InterpreterVisitor::operator()(const ast::IfExpressionNode& expression) {
+  auto value = operator()(*expression.condition);
+
+  if (!std::holds_alternative<bool>(value)) {
+    throw std::runtime_error("condition in if expression is not bool");
+  }
+
+  if (std::get<bool>(value)) {
+    return operator()(*expression.body);
+  }
+
+  for (auto& elif : expression.elif_bodies) {
+    auto elif_condition = operator()(*elif.expr);
+
+    if (!std::holds_alternative<bool>(elif_condition)) {
+      throw std::runtime_error("codition in else if is not bool");
+    }
+
+    if (std::get<bool>(elif_condition)) {
+      return operator()(*elif.block);
+    }
+  }
+
+  if (!expression.else_body.has_value()) {
+    return Dummy{};
+  }
+
+  return operator()(*expression.else_body.value());
 }
 
 calc_result_t
@@ -130,44 +169,6 @@ calc_result_t InterpreterVisitor::operator()(const ast::PrimaryNode& primary) {
 calc_result_t
 InterpreterVisitor::operator()(const ast::StatementNode& statement) {
   std::visit(*this, *statement.node);
-  return Dummy{};
-}
-
-calc_result_t
-InterpreterVisitor::operator()(const ast::IfStatementNode& if_statement) {
-  auto if_cond = operator()(*if_statement.condition);
-
-  if (!std::holds_alternative<bool>(if_cond)) {
-    throw std::runtime_error("expression in if condition must be bool");
-  }
-
-  if (std::get<bool>(if_cond)) {
-    for (auto& stmt : if_statement.body) {
-      operator()(stmt);
-    }
-
-    return Dummy{};
-  }
-
-  for (auto& elif : if_statement.elif_bodies) {
-    auto elif_cond = operator()(elif.expr);
-
-    if (!std::holds_alternative<bool>(elif_cond)) {
-      throw std::runtime_error("expression in elif condition must be bool");
-    }
-
-    if (std::get<bool>(elif_cond)) {
-      for (auto& stmt : elif.statements) {
-        operator()(stmt);
-      }
-
-      return Dummy{};
-    }
-  }
-
-  for (auto& stmt : if_statement.else_body) {
-    operator()(stmt);
-  }
   return Dummy{};
 }
 
@@ -243,8 +244,13 @@ calc_result_t InterpreterVisitor::operator()(const ast::Program& program) {
     throw std::runtime_error("main function has arguments");
   }
 
-  for (auto& stmt : main->body) {
+  for (auto& stmt : main->body->statements) {
     operator()(stmt);
   }
-  return operator()(*main->return_value);
+
+  if (!main->body->value.has_value()) {
+    return Dummy{};
+  }
+
+  return operator()(*main->body->value.value());
 }

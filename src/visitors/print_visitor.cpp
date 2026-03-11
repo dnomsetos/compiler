@@ -58,6 +58,77 @@ void PrintVisitor::operator()(const ast::ExpressionNode& expression) {
   tabs_.pop_back();
 }
 
+void PrintVisitor::operator()(const ast::BlockExpressionNode& expression) {
+  out_ << tabs_ << "block expression: " << std::endl;
+  tabs_ += "  ";
+
+  for (const auto& statement : expression.statements) {
+    operator()(statement);
+  }
+
+  if (expression.value.has_value()) {
+    out_ << tabs_ << "block value: " << std::endl;
+    tabs_ += "  ";
+
+    operator()(*expression.value.value());
+  }
+
+  tabs_.pop_back();
+  tabs_.pop_back();
+}
+
+void PrintVisitor::operator()(const ast::IfExpressionNode& expression) {
+  out_ << tabs_ << "if expression: " << std::endl;
+  tabs_ += "  ";
+
+  out_ << tabs_ << "if condition: " << std::endl;
+  tabs_ += "  ";
+
+  operator()(*expression.condition);
+
+  tabs_.pop_back();
+  tabs_.pop_back();
+
+  out_ << tabs_ << "if body: " << std::endl;
+  tabs_ += "  ";
+
+  operator()(*expression.body);
+
+  tabs_.pop_back();
+  tabs_.pop_back();
+
+  for (const auto& elif_body : expression.elif_bodies) {
+    out_ << tabs_ << "elif condition: " << std::endl;
+    tabs_ += "  ";
+
+    operator()(*elif_body.expr);
+
+    tabs_.pop_back();
+    tabs_.pop_back();
+
+    out_ << tabs_ << "elif body: " << std::endl;
+    tabs_ += "  ";
+
+    operator()(*elif_body.block);
+
+    tabs_.pop_back();
+    tabs_.pop_back();
+  }
+
+  if (expression.else_body.has_value()) {
+    out_ << tabs_ << "else body: " << std::endl;
+    tabs_ += "  ";
+
+    operator()(*expression.else_body.value());
+
+    tabs_.pop_back();
+    tabs_.pop_back();
+  }
+
+  tabs_.pop_back();
+  tabs_.pop_back();
+}
+
 void PrintVisitor::operator()(const ast::AssignmentNode& assignment) {
   out_ << tabs_ << "assignment: " << std::endl;
 
@@ -172,57 +243,6 @@ void PrintVisitor::operator()(const ast::StatementNode& statement) {
   tabs_.pop_back();
 }
 
-void PrintVisitor::operator()(const ast::IfStatementNode& if_statement) {
-  out_ << tabs_ << "if statement: " << std::endl;
-
-  tabs_ += "  ";
-
-  out_ << tabs_ << "if condition: " << std::endl;
-  operator()(*if_statement.condition);
-
-  out_ << tabs_ << "body: " << std::endl;
-  tabs_ += "  ";
-
-  for (auto& statement : if_statement.body) {
-    operator()(statement);
-  }
-
-  tabs_.pop_back();
-  tabs_.pop_back();
-
-  if (!if_statement.elif_bodies.empty()) {
-    for (auto& expr_stmts : if_statement.elif_bodies) {
-      out_ << tabs_ << "else if condition: " << std::endl;
-      operator()(expr_stmts.expr);
-
-      out_ << tabs_ << "body: " << std::endl;
-      tabs_ += "  ";
-
-      for (auto& statement : expr_stmts.statements) {
-        operator()(statement);
-      }
-
-      tabs_.pop_back();
-      tabs_.pop_back();
-    }
-  }
-
-  if (!if_statement.else_body.empty()) {
-    out_ << tabs_ << "else body: " << std::endl;
-    tabs_ += "  ";
-
-    for (auto& statement : if_statement.else_body) {
-      operator()(statement);
-    }
-
-    tabs_.pop_back();
-    tabs_.pop_back();
-  }
-
-  tabs_.pop_back();
-  tabs_.pop_back();
-}
-
 void PrintVisitor::operator()(const ast::VariableDefinitionNode& var_def) {
   out_ << tabs_ << "variable definition: " << std::endl;
 
@@ -276,7 +296,7 @@ void PrintVisitor::operator()(const ast::FunctionDefinitionNode& fn_def) {
   out_ << tabs_ << "body: " << std::endl;
   tabs_ += "  ";
 
-  for (auto& statement : fn_def.body) {
+  for (auto& statement : fn_def.body->statements) {
     operator()(statement);
   }
 

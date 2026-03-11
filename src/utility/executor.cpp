@@ -82,11 +82,15 @@ execute_program(const ast::Program& program,
     throw std::runtime_error("main function has arguments");
   }
 
-  for (auto& statement : main->body) {
+  for (auto& statement : main->body->statements) {
     execute_statement(statement, variables);
   }
 
-  return execute_expression(*main->return_value, variables);
+  if (!main->body->value.has_value()) {
+    return Dummy{};
+  }
+
+  return execute_expression(*main->body->value.value(), variables);
 }
 
 void execute_statement(
@@ -101,44 +105,55 @@ void execute_statement(
     auto& var_def = std::get<ast::VariableDefinitionNode>(*statement.node);
 
     execute_variable_definition(var_def, variables);
+  }
+}
 
-  } else if (std::holds_alternative<ast::IfStatementNode>(*statement.node)) {
-    auto& if_stmt = std::get<ast::IfStatementNode>(*statement.node);
+calc_result_t execute_block_expression(
+    const ast::BlockExpressionNode& expression,
+    std::unordered_map<std::string, calc_result_t>& variables) {
 
-    auto value = execute_expression(*if_stmt.condition, variables);
+  for (auto& stmt : expression.statements) {
+    execute_statement(stmt, variables);
+  }
 
-    if (!std::holds_alternative<bool>(value)) {
-      throw std::runtime_error(
-          "type of condition in if statement must be bool");
+  if (!expression.value.has_value()) {
+    return Dummy{};
+  }
+
+  return execute_expression(*expression.value.value(), variables);
+}
+
+calc_result_t execute_if_expression(
+    const ast::IfExpressionNode& expression,
+    std::unordered_map<std::string, calc_result_t>& variables) {
+
+  auto cond = execute_expression(*expression.condition, variables);
+
+  if (!std::holds_alternative<bool>(cond)) {
+    throw std::runtime_error("condition in if expression is not bool");
+  }
+
+  if (std::get<bool>(cond)) {
+    return execute_block_expression(*expression.body, variables);
+  }
+
+  for (auto& elif : expression.elif_bodies) {
+    auto elif_condition = execute_expression(*elif.expr, variables);
+
+    if (!std::holds_alternative<bool>(elif_condition)) {
+      throw std::runtime_error("codition in else if is not bool");
     }
 
-    if (std::get<bool>(value)) {
-      for (auto& statement : if_stmt.body) {
-        execute_statement(statement, variables);
-      }
-      return;
-    }
-
-    for (auto& ex_stmts : if_stmt.elif_bodies) {
-      value = execute_expression(ex_stmts.expr, variables);
-
-      if (!std::holds_alternative<bool>(value)) {
-        throw std::runtime_error(
-            "type of condition in elif statement must be bool");
-      }
-
-      if (std::get<bool>(value)) {
-        for (auto& statement : ex_stmts.statements) {
-          execute_statement(statement, variables);
-        }
-        return;
-      }
-    }
-
-    for (auto& statement : if_stmt.else_body) {
-      execute_statement(statement, variables);
+    if (std::get<bool>(elif_condition)) {
+      return execute_block_expression(*elif.block, variables);
     }
   }
+
+  if (expression.else_body.has_value()) {
+    return execute_block_expression(*expression.else_body.value(), variables);
+  }
+
+  return Dummy{};
 }
 
 calc_result_t
@@ -165,10 +180,22 @@ execute_expression(const ast::ExpressionNode& expression,
 
     return value;
   }
+
   if (std::holds_alternative<ast::OrNode>(*expression.node)) {
     return execute_or(std::get<ast::OrNode>(*expression.node), variables);
   }
-  return true;
+
+  if (std::holds_alternative<ast::BlockExpressionNode>(*expression.node)) {
+    return execute_block_expression(
+        std::get<ast::BlockExpressionNode>(*expression.node), variables);
+  }
+
+  if (std::holds_alternative<ast::IfExpressionNode>(*expression.node)) {
+    return execute_if_expression(
+        std::get<ast::IfExpressionNode>(*expression.node), variables);
+  }
+
+  throw std::runtime_error("unknown expression");
 }
 
 template <typename NodeT, typename PrevExecFn, typename OpHandler>

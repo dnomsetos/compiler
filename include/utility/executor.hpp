@@ -20,6 +20,15 @@ execute_program(const ast::Program& program,
 void execute_statement(
     const ast::StatementNode& statement,
     std::unordered_map<std::string, calc_result_t>& variables);
+
+calc_result_t execute_block_expression(
+    const ast::BlockExpressionNode& expression,
+    std::unordered_map<std::string, calc_result_t>& variables);
+
+calc_result_t execute_if_expression(
+    const ast::IfExpressionNode& expression,
+    std::unordered_map<std::string, calc_result_t>& variables);
+
 calc_result_t
 execute_expression(const ast::ExpressionNode& expression,
                    std::unordered_map<std::string, calc_result_t>& variables);

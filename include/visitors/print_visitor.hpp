@@ -12,6 +12,10 @@ public:
 
   void operator()(const ast::ExpressionNode& expression);
 
+  void operator()(const ast::BlockExpressionNode& expression);
+
+  void operator()(const ast::IfExpressionNode& expression);
+
   void operator()(const ast::AssignmentNode& assignment);
 
   template <typename BinaryNode> void operator()(const BinaryNode& binary_node);
@@ -21,8 +25,6 @@ public:
   void operator()(const ast::PrimaryNode& primary_node);
 
   void operator()(const ast::StatementNode& statement);
-
-  void operator()(const ast::IfStatementNode& if_statement);
 
   void operator()(const ast::VariableDefinitionNode& variable_definition);
 

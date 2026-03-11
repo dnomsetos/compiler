@@ -1,3 +1,4 @@
+#include "utility/ast_allocator.hpp"
 #include <cassert>
 #include <expected>
 #include <variant>
@@ -150,20 +151,6 @@ auto parse_function_definition_argument_list(
   return begin;
 }
 
-auto parse_statement_list(ParseIter begin,
-                          std::pmr::vector<ast::StatementNode>& statements)
-    -> ParseIter {
-  for (;;) {
-    auto stmt = parse_statement(begin);
-    if (!stmt.has_value()) {
-      break;
-    }
-    statements.emplace_back(std::move(*stmt.value().first));
-    begin = stmt.value().second;
-  }
-  return begin;
-}
-
 auto parse_function_definition(ParseIter begin)
     -> ParseResult<ast::FunctionDefinitionNode> {
 
@@ -212,27 +199,15 @@ auto parse_function_definition(ParseIter begin)
   }
   ++begin;
 
-  if (!std::holds_alternative<tkn::LeftBrace>(begin->token_variant)) {
-    return std::unexpected(UnexpectedToken{begin->position, tkn::LeftBrace{},
-                                           begin->token_variant});
+  auto block = parse_block_expression(begin);
+  if (!block.has_value()) {
+    return std::unexpected(block.error());
   }
-  ++begin;
+  begin = block.value().second;
 
-  begin = parse_statement_list(begin, result->body);
+  result->body = std::move(block.value().first);
 
-  auto return_expr = parse_expression(begin);
-  if (!return_expr.has_value()) {
-    return std::unexpected(return_expr.error());
-  }
-  begin = return_expr.value().second;
-
-  if (!std::holds_alternative<tkn::RightBrace>(begin->token_variant)) {
-    return std::unexpected(UnexpectedToken{begin->position, tkn::RightBrace{},
-                                           begin->token_variant});
-  }
-  result->return_value = std::move(return_expr.value().first);
-
-  return std::make_pair(std::move(result), begin + 1);
+  return std::make_pair(std::move(result), begin);
 }
 
 auto parse_variable_definition(ParseIter begin)
@@ -281,84 +256,55 @@ auto parse_variable_definition(ParseIter begin)
   return std::make_pair(std::move(result), begin + 1);
 }
 
-auto parse_elif_and_else_block(
-    ParseIter begin, ast::pmr_unique_ptr<ast::IfStatementNode>& if_stmt)
-    -> std::variant<ParseIter, UnexpectedToken, TryButCant> {
-  if (!std::holds_alternative<tkn::Else>(begin->token_variant)) {
-    return begin;
-  }
-  ++begin;
+auto parse_block_expression(ParseIter begin)
+    -> ParseResult<ast::BlockExpressionNode> {
 
-  while (std::holds_alternative<tkn::If>(begin->token_variant)) {
-    ++begin;
-
-    if (!std::holds_alternative<tkn::LeftParent>(begin->token_variant)) {
-      return UnexpectedToken{begin->position, tkn::LeftParent{},
-                             begin->token_variant};
-    }
-    ++begin;
-
-    auto elif_cond_expr = parse_expression(begin);
-    if (!elif_cond_expr.has_value()) {
-      return std::visit(
-          [](auto&& error)
-              -> std::variant<ParseIter, UnexpectedToken, TryButCant> {
-            return error;
-          },
-          elif_cond_expr.error());
-    }
-    begin = elif_cond_expr.value().second;
-
-    if (!std::holds_alternative<tkn::RightParent>(begin->token_variant)) {
-      return UnexpectedToken{begin->position, tkn::RightParent{},
-                             begin->token_variant};
-    }
-    if_stmt->elif_bodies.emplace_back(std::move(*elif_cond_expr.value().first));
-    ++begin;
-
-    if (!std::holds_alternative<tkn::LeftBrace>(begin->token_variant)) {
-      return UnexpectedToken{begin->position, tkn::LeftBrace{},
-                             begin->token_variant};
-    }
-    ++begin;
-
-    begin = parse_statement_list(begin, if_stmt->elif_bodies.back().statements);
-
-    if (!std::holds_alternative<tkn::RightBrace>(begin->token_variant)) {
-      return UnexpectedToken{begin->position, tkn::RightBrace{},
-                             begin->token_variant};
-    }
-    ++begin;
-
-    if (!std::holds_alternative<tkn::Else>(begin->token_variant)) {
-      return begin;
-    }
-    ++begin;
-  }
   if (!std::holds_alternative<tkn::LeftBrace>(begin->token_variant)) {
-    return UnexpectedToken{begin->position, tkn::LeftBrace{},
-                           begin->token_variant};
+    return std::unexpected(UnexpectedToken{begin->position, tkn::LeftBrace{},
+                                           begin->token_variant});
   }
+
+  auto result = ast::BlockExpressionNode(begin->position);
   ++begin;
+
   for (;;) {
-    auto statement = parse_statement(begin);
-    if (!statement.has_value()) {
+    auto stmt = parse_statement(begin);
+    if (!stmt.has_value()) {
       break;
     }
-    if_stmt->else_body.emplace_back(std::move(*statement.value().first));
-    begin = statement.value().second;
+
+    begin = stmt.value().second;
+    result.statements.emplace_back(std::move(*stmt.value().first));
   }
+
+  auto expr = parse_expression(begin);
+  if (!expr.has_value()) {
+    if (!std::holds_alternative<tkn::RightBrace>(begin->token_variant)) {
+      return std::unexpected(UnexpectedToken{begin->position, tkn::RightBrace{},
+                                             begin->token_variant});
+    }
+
+    return std::make_pair(ast::alloc::make_unique_pmr<ast::BlockExpressionNode>(
+                              std::move(result)),
+                          begin + 1);
+  }
+
+  result.value = std::move(expr.value().first);
+  begin = expr.value().second;
+
   if (!std::holds_alternative<tkn::RightBrace>(begin->token_variant)) {
-    return UnexpectedToken{begin->position, tkn::RightBrace{},
-                           begin->token_variant};
+    return std::unexpected(UnexpectedToken{begin->position, tkn::RightBrace{},
+                                           begin->token_variant});
   }
-  ++begin;
-  return begin;
+
+  return std::make_pair(
+      ast::alloc::make_unique_pmr<ast::BlockExpressionNode>(std::move(result)),
+      begin + 1);
 }
 
-auto parse_if_statement(ParseIter begin) -> ParseResult<ast::IfStatementNode> {
+auto parse_if_expression(ParseIter begin)
+    -> ParseResult<ast::IfExpressionNode> {
 
-  auto start_begin = begin;
   if (!std::holds_alternative<tkn::If>(begin->token_variant)) {
     return std::unexpected(
         UnexpectedToken{begin->position, tkn::If{}, begin->token_variant});
@@ -371,11 +317,11 @@ auto parse_if_statement(ParseIter begin) -> ParseResult<ast::IfStatementNode> {
   }
   ++begin;
 
-  auto cond_expr = parse_expression(begin);
-  if (!cond_expr.has_value()) {
-    return std::unexpected(cond_expr.error());
+  auto condition = parse_expression(begin);
+  if (!condition.has_value()) {
+    return std::unexpected(condition.error());
   }
-  begin = cond_expr.value().second;
+  begin = condition.value().second;
 
   if (!std::holds_alternative<tkn::RightParent>(begin->token_variant)) {
     return std::unexpected(UnexpectedToken{begin->position, tkn::RightParent{},
@@ -383,41 +329,67 @@ auto parse_if_statement(ParseIter begin) -> ParseResult<ast::IfStatementNode> {
   }
   ++begin;
 
-  if (!std::holds_alternative<tkn::LeftBrace>(begin->token_variant)) {
-    return std::unexpected(UnexpectedToken{begin->position, tkn::LeftBrace{},
-                                           begin->token_variant});
+  auto block = parse_block_expression(begin);
+  if (!block.has_value()) {
+    return std::unexpected(block.error());
+  }
+  begin = block.value().second;
+
+  auto if_expr = ast::alloc::make_unique_pmr<ast::IfExpressionNode>(
+      std::move(condition.value().first), std::move(block.value().first),
+      begin->position);
+
+  if (!std::holds_alternative<tkn::Else>(begin->token_variant)) {
+    return std::make_pair(std::move(if_expr), begin);
   }
   ++begin;
 
-  auto if_stmt = ast::alloc::make_unique_pmr<ast::IfStatementNode>(
-      std::move(cond_expr.value().first), start_begin->position);
+  while (std::holds_alternative<tkn::If>(begin->token_variant)) {
+    ++begin;
+    auto block_begin = begin;
 
-  begin = parse_statement_list(begin, if_stmt->body);
+    if (!std::holds_alternative<tkn::LeftParent>(begin->token_variant)) {
+      return std::unexpected(UnexpectedToken{begin->position, tkn::LeftParent{},
+                                             begin->token_variant});
+    }
+    ++begin;
 
-  if (!std::holds_alternative<tkn::RightBrace>(begin->token_variant)) {
-    return std::unexpected(UnexpectedToken{begin->position, tkn::RightBrace{},
-                                           begin->token_variant});
+    auto condition = parse_expression(begin);
+    if (!condition.has_value()) {
+      return std::unexpected(condition.error());
+    }
+    begin = condition.value().second;
+
+    if (!std::holds_alternative<tkn::RightParent>(begin->token_variant)) {
+      return std::unexpected(UnexpectedToken{
+          begin->position, tkn::RightParent{}, begin->token_variant});
+    }
+    ++begin;
+
+    auto block = parse_block_expression(begin);
+    if (!block.has_value()) {
+      return std::unexpected(block.error());
+    }
+    begin = block.value().second;
+
+    if_expr->elif_bodies.emplace_back(std::move(condition.value().first),
+                                      std::move(block.value().first),
+                                      block_begin->position);
+
+    if (!std::holds_alternative<tkn::Else>(begin->token_variant)) {
+      return std::make_pair(std::move(if_expr), begin);
+    }
+    ++begin;
   }
-  ++begin;
 
-  auto else_and_elif_result = parse_elif_and_else_block(begin, if_stmt);
-  if (!std::holds_alternative<ParseIter>(else_and_elif_result)) {
-    return std::visit(
-        [](auto&& value) -> ParseResult<ast::IfStatementNode> {
-          if constexpr (std::is_same_v<std::decay_t<decltype(value)>,
-                                       TryButCant> ||
-                        std::is_same_v<std::decay_t<decltype(value)>,
-                                       UnexpectedToken>) {
-            return std::unexpected(value);
-          } else {
-            assert(false && "there is no ParseIter");
-          }
-        },
-        else_and_elif_result);
+  auto else_block = parse_block_expression(begin);
+  if (!else_block.has_value()) {
+    return std::unexpected(else_block.error());
   }
-  begin = std::get<ParseIter>(else_and_elif_result);
+  begin = else_block.value().second;
 
-  return std::make_pair(std::move(if_stmt), begin);
+  if_expr->else_body = std::move(else_block.value().first);
+  return std::make_pair(std::move(if_expr), begin);
 }
 
 auto parse_statement(ParseIter begin) -> ParseResult<ast::StatementNode> {
@@ -430,24 +402,19 @@ auto parse_statement(ParseIter begin) -> ParseResult<ast::StatementNode> {
         var_def.value().second);
   }
 
-  auto if_stmt = parse_if_statement(begin);
-  if (if_stmt.has_value()) {
-    return std::make_pair(
-        ast::alloc::make_unique_pmr<ast::StatementNode>(
-            std::move(*if_stmt.value().first), begin->position),
-        if_stmt.value().second);
-  }
-
   auto expr = parse_expression(begin);
   if (expr.has_value()) {
-    if (std::holds_alternative<tkn::Semicolon>(
+    if (!std::holds_alternative<tkn::Semicolon>(
             expr.value().second->token_variant)) {
-      return std::make_pair(
-          ast::alloc::make_unique_pmr<ast::StatementNode>(
-              std::move(*expr.value().first), begin->position),
-          expr.value().second + 1);
+      return std::unexpected(
+          UnexpectedToken{expr.value().second->position, tkn::Semicolon{},
+                          expr.value().second->token_variant});
     }
+    return std::make_pair(ast::alloc::make_unique_pmr<ast::StatementNode>(
+                              std::move(*expr.value().first), begin->position),
+                          expr.value().second + 1);
   }
+
   return std::unexpected(TryButCant{begin->position, nterm::Statement{}});
 }
 
@@ -468,6 +435,23 @@ auto parse_expression(ParseIter begin) -> ParseResult<ast::ExpressionNode> {
             std::move(*or_expr.value().first), begin->position),
         or_expr.value().second);
   }
+
+  auto block_expr = parse_block_expression(begin);
+  if (block_expr.has_value()) {
+    return std::make_pair(
+        ast::alloc::make_unique_pmr<ast::ExpressionNode>(
+            std::move(*block_expr.value().first), begin->position),
+        block_expr.value().second);
+  }
+
+  auto if_expr = parse_if_expression(begin);
+  if (if_expr.has_value()) {
+    return std::make_pair(
+        ast::alloc::make_unique_pmr<ast::ExpressionNode>(
+            std::move(*if_expr.value().first), begin->position),
+        if_expr.value().second);
+  }
+
   return std::unexpected(TryButCant{begin->position, nterm::Expression{}});
 }
 

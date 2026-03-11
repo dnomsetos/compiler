@@ -1,11 +1,12 @@
 program ::= definition*
 definition ::= function_definition | variable_definition
-function_definition ::= "fn" identifier "(" ")" "{" statement* expression "}"
+function_definition ::= "fn" identifier "(" ")" block_expression
 variable_definition ::= "var" identifier ":" identifier ";"
 arguments_list ::= (identifier : identifier ("," identifier : identifier)*) | eps
-statement ::= expression ";" | if_statement | variable_definition
-if_statement ::= "if" "(" expression ")" "{" statements* "}" ("else" "if" "(" expression ")" "{" statement* "}")* ("else" "{" statement* "}")?
-expression ::= assignment | or 
+statement ::= expression ";" | variable_definition
+expression ::= assignment | or | if_expression | block_expression
+block_expression ::= "{" definition* expression? "}"
+if_expression ::= "if" "(" expression ")" block_expression ("else" "if" "(" expression ")" block_expression)* ("else" block_expression)?
 assignment ::= identifier "=" expression
 or ::= xor ("|" xor)*
 xor ::= and ("^" and)*
