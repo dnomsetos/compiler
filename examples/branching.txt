@@ -1,0 +1,14 @@
+var x : int = 4;
+                         
+fn main() {
+    if (x > 0) {
+        if (x > 10) {
+            x = x - 10;
+        } else {
+            x = x - 1;
+        }
+    } else {
+        x = x + 1;
+    }
+    x * x
+}

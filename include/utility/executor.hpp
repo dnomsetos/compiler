@@ -4,17 +4,14 @@
 
 #include <parser/ast.hpp>
 
-struct Dummy {};
+std::ostream& operator<<(std::ostream& out, const Dummy&);
 
-using calc_result_t =
-    std::variant<std::int64_t, double, bool, std::string, Dummy>;
+template <typename T> struct IsVariant : std::false_type {};
 
-inline const std::pair<std::string, calc_result_t> default_value_table[] = {
-    {"int", 0},
-    {"float", 0.0},
-    {"bool", false},
-    {"str", ""},
-};
+template <typename... Ts>
+struct IsVariant<std::variant<Ts...>> : std::true_type {};
+
+template <typename T> constexpr bool is_variant_v = IsVariant<T>::value;
 
 calc_result_t
 execute_program(const ast::Program& program,

@@ -5,6 +5,7 @@
 #include <parser/ast.hpp>
 #include <parser/parse.hpp>
 #include <scanner/token.hpp>
+#include <utility/token_utilities.hpp>
 #include <utility/type_tuple.hpp>
 
 template <typename Result, typename PartType, TypeTupleLike OperationTuple>
@@ -22,7 +23,7 @@ auto parse_left_associative(ParseIter begin,
   begin = first_part.value().second;
 
   for (;;) {
-    if (!tkn::is_in_type_tuple<OperationTuple>(*begin)) {
+    if (!is_in_type_tuple<OperationTuple>(*begin)) {
       break;
     }
 
@@ -31,8 +32,7 @@ auto parse_left_associative(ParseIter begin,
       break;
     }
     auto optional_variant =
-        tkn::from_big_to_small<tkn::TokenTuple, OperationTuple>(
-            begin->token_variant);
+        variant_cast<tkn::TokenTuple, OperationTuple>(begin->token_variant);
 
     if (!optional_variant.has_value()) {
       break;
@@ -188,7 +188,7 @@ auto parse_function_definition(ParseIter begin)
       std::move(identifier.value().first), (begin - 2)->position);
 
   auto parse_list =
-      parse_function_definition_argument_list(begin, result->argument_lits);
+      parse_function_definition_argument_list(begin, result->argument_list);
   if (!std::holds_alternative<ParseIter>(parse_list)) {
     return std::visit(
         [](auto&& value) -> ParseResult<ast::FunctionDefinitionNode> {
@@ -537,7 +537,7 @@ auto parse_multiplication(ParseIter begin)
 auto parse_unary(ParseIter begin) -> ParseResult<ast::UnaryNode> {
 
   auto optional_variant =
-      tkn::from_big_to_small<tkn::TokenTuple, tkn::UnaryOperatorTuple>(
+      variant_cast<tkn::TokenTuple, tkn::UnaryOperatorTuple>(
           begin->token_variant);
 
   if (optional_variant.has_value()) {
@@ -674,12 +674,11 @@ auto parse_primary(ParseIter begin) -> ParseResult<ast::PrimaryNode> {
 
 auto parse_literal(ParseIter begin) -> ParseResult<ast::LiteralNode> {
 
-  if (tkn::is_in_type_tuple<tkn::LiteralTuple>(*begin)) {
+  if (is_in_type_tuple<tkn::LiteralTuple>(*begin)) {
     auto next = begin + 1;
 
     auto optional_variant =
-        tkn::from_big_to_small<tkn::TokenTuple, tkn::LiteralTuple>(
-            begin->token_variant);
+        variant_cast<tkn::TokenTuple, tkn::LiteralTuple>(begin->token_variant);
 
     if (!optional_variant.has_value()) {
       return std::unexpected(TryButCant{begin->position, nterm::Literal{}});

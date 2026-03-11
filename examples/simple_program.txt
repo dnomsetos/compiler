@@ -1,0 +1,7 @@
+var x : int = 42;
+
+fn main() {
+  println(x + 42);
+  var y : int = x / 6;
+  y
+}

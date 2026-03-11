@@ -8,6 +8,11 @@
 #include <scanner/token.hpp>
 #include <utility/executor.hpp>
 
+std::ostream& operator<<(std::ostream& out, const Dummy&) {
+  out << "void";
+  return out;
+}
+
 void execute_variable_definition(
     const ast::VariableDefinitionNode& var_def,
     std::unordered_map<std::string, calc_result_t>& variables) {
@@ -73,7 +78,7 @@ execute_program(const ast::Program& program,
     throw std::runtime_error("no main function");
   }
 
-  if (main->argument_lits.size() != 0) {
+  if (main->argument_list.size() != 0) {
     throw std::runtime_error("main function has arguments");
   }
 
@@ -166,11 +171,6 @@ execute_expression(const ast::ExpressionNode& expression,
   return true;
 }
 
-template <typename T> struct is_variant : std::false_type {};
-
-template <typename... Ts>
-struct is_variant<std::variant<Ts...>> : std::true_type {};
-
 template <typename NodeT, typename PrevExecFn, typename OpHandler>
 calc_result_t execute_binary_op_impl(
     const NodeT& expression,
@@ -210,7 +210,7 @@ execute_or(const ast::OrNode& expression,
 
   return execute_binary_op_impl(
       expression, variables, execute_xor,
-      [](auto const& op, auto&& l, auto&& r) -> std::optional<calc_result_t> {
+      [](const auto& op, auto&& l, auto&& r) -> std::optional<calc_result_t> {
         if (op == tkn::Or{}) {
           if constexpr (requires { l | r; }) {
             return l | r;
@@ -419,16 +419,16 @@ execute_primary(const ast::PrimaryNode& expression,
   if (std::holds_alternative<ast::LiteralNode>(*expression.primary)) {
     auto& literal = *std::get<ast::LiteralNode>(*expression.primary).literal;
 
-    if (std::holds_alternative<tkn::IntLiteral>(literal)) {
-      return static_cast<std::int64_t>(
-          std::get<tkn::IntLiteral>(literal).value);
-    } else if (std::holds_alternative<tkn::BoolLiteral>(literal)) {
-      return std::get<tkn::BoolLiteral>(literal).value;
-    } else if (std::holds_alternative<tkn::FloatLiteral>(literal)) {
-      return std::get<tkn::FloatLiteral>(literal).value;
-    } else if (std::holds_alternative<tkn::StringLiteral>(literal)) {
-      return std::get<tkn::StringLiteral>(literal).value;
-    }
+    return std::visit(
+        [](auto&& literal) -> calc_result_t {
+          if constexpr (std::is_same_v<std::decay_t<decltype(literal.value)>,
+                                       std::uint64_t>) {
+            return static_cast<std::int64_t>(literal.value);
+          } else {
+            return literal.value;
+          }
+        },
+        literal);
   }
 
   if (std::holds_alternative<ast::ExpressionNode>(*expression.primary)) {

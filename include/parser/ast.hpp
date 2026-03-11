@@ -153,7 +153,7 @@ struct StatementNode : ASTNode {
 
 struct FunctionDefinitionNode : ASTNode {
   pmr_unique_ptr<IdentifierNode> name;
-  std::pmr::vector<std::pair<IdentifierNode, IdentifierNode>> argument_lits;
+  std::pmr::vector<std::pair<IdentifierNode, IdentifierNode>> argument_list;
   pmr_unique_ptr<IdentifierNode> return_type;
   std::pmr::vector<StatementNode> body;
   pmr_unique_ptr<ExpressionNode> return_value;
@@ -170,5 +170,31 @@ struct Program {
 
   Program() : definitions{&alloc::mr} {}
 };
+
+template <typename T> struct NodeName;
+
+#define CREATE_NODE_NAME(node, name)                                           \
+  template <> struct NodeName<node> {                                          \
+    static constexpr const char* value = name;                                 \
+  };
+
+CREATE_NODE_NAME(LiteralNode, "literal")
+CREATE_NODE_NAME(IdentifierNode, "identifier")
+CREATE_NODE_NAME(FunctionCallNode, "function call")
+CREATE_NODE_NAME(AssignmentNode, "assignment")
+CREATE_NODE_NAME(OrNode, "or")
+CREATE_NODE_NAME(XorNode, "xor")
+CREATE_NODE_NAME(AndNode, "and")
+CREATE_NODE_NAME(EqualityNode, "equality")
+CREATE_NODE_NAME(ComparisonNode, "comparison")
+CREATE_NODE_NAME(AdditionNode, "addition")
+CREATE_NODE_NAME(MultiplicationNode, "multiplication")
+CREATE_NODE_NAME(UnaryNode, "unary")
+CREATE_NODE_NAME(PrimaryNode, "primary")
+CREATE_NODE_NAME(ExpressionNode, "expression")
+CREATE_NODE_NAME(StatementNode, "statement")
+CREATE_NODE_NAME(IfStatementNode, "if statement")
+CREATE_NODE_NAME(VariableDefinitionNode, "variable definition")
+CREATE_NODE_NAME(FunctionDefinitionNode, "function definition")
 
 } // namespace ast
