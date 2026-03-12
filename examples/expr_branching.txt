@@ -1,0 +1,19 @@
+var x : int = 4;
+var z : int = 3;
+                         
+fn main() {
+    var y : int = 
+        if (x > 0) {
+            if (x > 10) {
+                x = x - 10;
+                x
+            } else {
+                x = x - 1;
+                x * z
+            }
+        } else {
+            x = x + 1;
+            z
+        };
+    x * y - z
+}

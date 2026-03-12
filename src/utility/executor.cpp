@@ -480,7 +480,7 @@ execute_primary(const ast::PrimaryNode& expression,
                   std::cout << "false ";
                 }
               } else if constexpr (requires { std::cout << value; }) {
-                std::cout << value;
+                std::cout << value << ' ';
               }
             },
             result);

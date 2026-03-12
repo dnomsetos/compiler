@@ -1,0 +1,13 @@
+var x : int = 4;
+
+fn main() {
+    x = {
+        var y : int = {
+            x = 42;
+            (x ^ 32) - 5
+        };
+        println(x, y, x ^ 32);
+        x * y
+    };
+    x + 5
+}

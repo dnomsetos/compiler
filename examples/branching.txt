@@ -6,9 +6,9 @@ fn main() {
             x = x - 10;
         } else {
             x = x - 1;
-        }
+        };
     } else {
         x = x + 1;
-    }
+    };
     x * x
 }
