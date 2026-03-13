@@ -1,0 +1,8 @@
+var p : int;
+var q : int;
+                        
+fn main() {
+    p = (1 & 3) | (4 ^ 2);
+    q = p & (p | 7) ^ 5;
+    q
+}

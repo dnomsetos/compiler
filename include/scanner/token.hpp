@@ -1,10 +1,27 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <optional>
+#include <ostream>
+#include <stdexcept>
 #include <string>
 
 #include <utility/type_tuple.hpp>
+
+struct Dummy {
+  friend bool operator==(const Dummy&, const Dummy&) = default;
+};
+
+using calc_result_t =
+    std::variant<std::int64_t, double, bool, std::string, Dummy>;
+
+inline const std::pair<std::string, calc_result_t> default_value_table[] = {
+    {"int", 0},
+    {"float", 0.0},
+    {"bool", false},
+    {"str", ""},
+};
 
 namespace tkn {
 
@@ -13,22 +30,96 @@ namespace tkn {
     friend bool operator==(const name& left, const name& right) = default;     \
   };
 
-GENERATE_EMPTY_TOKEN(Plus)
-GENERATE_EMPTY_TOKEN(Minus)
-GENERATE_EMPTY_TOKEN(Multiply)
-GENERATE_EMPTY_TOKEN(Divide)
-GENERATE_EMPTY_TOKEN(Mod)
-GENERATE_EMPTY_TOKEN(Equal)
-GENERATE_EMPTY_TOKEN(NotEqual)
-GENERATE_EMPTY_TOKEN(Less)
-GENERATE_EMPTY_TOKEN(Greater)
-GENERATE_EMPTY_TOKEN(LessEqual)
-GENERATE_EMPTY_TOKEN(GreaterEqual)
-GENERATE_EMPTY_TOKEN(Assignment)
-GENERATE_EMPTY_TOKEN(And)
-GENERATE_EMPTY_TOKEN(Or)
-GENERATE_EMPTY_TOKEN(Xor)
-GENERATE_EMPTY_TOKEN(Not)
+#define GENERATE_BINARY_OPERATION(name, op)                                    \
+  struct name {                                                                \
+    friend bool operator==(const name& left, const name& right) = default;     \
+    inline static std::function<calc_result_t(const calc_result_t&,            \
+                                              const calc_result_t&)>           \
+        binary_operation = [](auto&& l, auto&& r) -> calc_result_t {           \
+      return std::visit(                                                       \
+          [](auto&& l, auto&& r) -> calc_result_t {                            \
+            if constexpr (requires { l op r; }) {                              \
+              return l op r;                                                   \
+            } else {                                                           \
+              throw std::runtime_error("invalid arguments");                   \
+            }                                                                  \
+          },                                                                   \
+          l, r);                                                               \
+    };                                                                         \
+  };                                                                           \
+  inline std::ostream& operator<<(std::ostream& os, const name&) {             \
+    os << #op;                                                                 \
+    return os;                                                                 \
+  }
+
+#define GENERATE_UNIVERSAL_OPERATION(name, op)                                 \
+  struct name {                                                                \
+    friend bool operator==(const name& left, const name& right) = default;     \
+    inline static std::function<calc_result_t(const calc_result_t&,            \
+                                              const calc_result_t&)>           \
+        binary_operation = [](const calc_result_t& l,                          \
+                              const calc_result_t& r) -> calc_result_t {       \
+      return std::visit(                                                       \
+          [](auto&& l, auto&& r) -> calc_result_t {                            \
+            if constexpr (requires { l op r; }) {                              \
+              return l op r;                                                   \
+            } else {                                                           \
+              throw std::runtime_error("invalid arguments");                   \
+            }                                                                  \
+          },                                                                   \
+          l, r);                                                               \
+    };                                                                         \
+    inline static std::function<calc_result_t(const calc_result_t&)>           \
+        unary_operation = [](const calc_result_t& value) -> calc_result_t {    \
+      return std::visit(                                                       \
+          [](auto&& value) -> calc_result_t {                                  \
+            if constexpr (requires { op value; }) {                            \
+              return op value;                                                 \
+            } else {                                                           \
+              throw std::runtime_error("invalid arguments");                   \
+            }                                                                  \
+          },                                                                   \
+          value);                                                              \
+    };                                                                         \
+  };                                                                           \
+  inline std::ostream& operator<<(std::ostream& os, const name&) {             \
+    os << #op;                                                                 \
+    return os;                                                                 \
+  }
+
+#define GENERATE_UNARY_OPERATION(name, op)                                     \
+  struct name {                                                                \
+    friend bool operator==(const name& left, const name& right) = default;     \
+    inline static std::function<calc_result_t(const calc_result_t&)>           \
+        unary_operation = [](const calc_result_t& value) -> calc_result_t {    \
+      return std::visit(                                                       \
+          [](auto&& value) -> calc_result_t {                                  \
+            if constexpr (requires { op value; }) {                            \
+              return op value;                                                 \
+            } else {                                                           \
+              throw std::runtime_error("invalid arguments");                   \
+            }                                                                  \
+          },                                                                   \
+          value);                                                              \
+    };                                                                         \
+  };
+
+GENERATE_UNIVERSAL_OPERATION(Plus, +)
+GENERATE_UNIVERSAL_OPERATION(Minus, -)
+GENERATE_BINARY_OPERATION(Multiply, *)
+GENERATE_BINARY_OPERATION(Divide, /)
+GENERATE_BINARY_OPERATION(Mod, %)
+GENERATE_BINARY_OPERATION(Equal, ==)
+GENERATE_BINARY_OPERATION(NotEqual, !=)
+GENERATE_BINARY_OPERATION(Less, <)
+GENERATE_BINARY_OPERATION(Greater, >)
+GENERATE_BINARY_OPERATION(LessEqual, <=)
+GENERATE_BINARY_OPERATION(GreaterEqual, >=)
+GENERATE_BINARY_OPERATION(Assignment, =)
+GENERATE_BINARY_OPERATION(And, &)
+GENERATE_BINARY_OPERATION(Or, |)
+GENERATE_BINARY_OPERATION(Xor, ^)
+GENERATE_UNARY_OPERATION(Not, !)
 GENERATE_EMPTY_TOKEN(Fn)
 GENERATE_EMPTY_TOKEN(Var)
 GENERATE_EMPTY_TOKEN(Arrow)
@@ -143,29 +234,5 @@ struct TokenInfo {
   friend bool operator==(const TokenInfo& left,
                          const TokenInfo& right) = default;
 };
-
-template <TypeTupleLike Tuple> bool is_in_type_tuple(const TokenInfo& token) {
-  return std::visit(
-      [](auto&& value) -> bool {
-        using T = std::decay_t<decltype(value)>;
-        return IsInTypeTuple<T, Tuple>::value;
-      },
-      token.token_variant);
-}
-
-template <TypeTupleLike BigTuple, TypeTupleLike SmallTuple>
-auto from_big_to_small(const type_tuple_to_variant_t<BigTuple>& variant)
-    -> std::optional<type_tuple_to_variant_t<SmallTuple>> {
-  return std::visit(
-      [](auto&& val) -> std::optional<type_tuple_to_variant_t<SmallTuple>> {
-        using T = std::decay_t<decltype(val)>;
-
-        if constexpr (IsInTypeTuple<T, SmallTuple>::value) {
-          return val;
-        }
-        return std::nullopt;
-      },
-      variant);
-}
 
 } // namespace tkn

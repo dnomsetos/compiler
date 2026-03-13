@@ -63,7 +63,10 @@ auto parse_function_definition(ParseIter begin)
 auto parse_variable_definition(ParseIter begin)
     -> ParseResult<ast::VariableDefinitionNode>;
 
-auto parse_if_statement(ParseIter begin) -> ParseResult<ast::IfStatementNode>;
+auto parse_block_expression(ParseIter begin)
+    -> ParseResult<ast::BlockExpressionNode>;
+
+auto parse_if_expression(ParseIter begin) -> ParseResult<ast::IfExpressionNode>;
 
 auto parse_statement(ParseIter begin) -> ParseResult<ast::StatementNode>;
 
