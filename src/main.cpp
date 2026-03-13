@@ -8,6 +8,16 @@
 #include <visitors/interpreter_visitor.hpp>
 #include <visitors/print_visitor.hpp>
 
+const int number_of_required_args = 3;
+
+const std::string help_mode = "--help";
+const std::string print_ast_mode = "--print_ast";
+const std::string interpret_mode = "--interpret";
+const std::string execute_mode = "--execute";
+
+const char* skip_empty_arg = "--skip_empty";
+const char* out_file_arg = "--file";
+
 void print_ast(const std::string& code, std::ostream& out, bool skip_empty) {
   out << "Printing AST\n";
 
@@ -59,13 +69,17 @@ void execute(const std::string& code) {
   std::visit([](auto&& value) { std::cout << value << '\n'; }, result);
 }
 
+void print_help() {
+  std::cout << "Usage:\n";
+  std::cout << "  compiler " << print_ast_mode << " <file> [" << out_file_arg
+            << " <file>] [" << skip_empty_arg << " <true|false>]\n";
+  std::cout << "  compiler " << interpret_mode << " <file>\n";
+  std::cout << "  compiler " << execute_mode << " <file>\n";
+}
+
 int main(int argc, char** argv) {
-  if (argc < 3) {
-    std::cerr << "Usage:\n";
-    std::cerr << "  compiler --print_ast <file> [--out <file>] [--skip_empty "
-                 "<true|false>]\n";
-    std::cerr << "  compiler --interpret <file>\n";
-    std::cerr << "  compiler --executr <file>\n";
+  if (argc < number_of_required_args) {
+    print_help();
     return 1;
   }
 
@@ -83,15 +97,16 @@ int main(int argc, char** argv) {
   std::string code((std::istreambuf_iterator<char>(in)),
                    (std::istreambuf_iterator<char>()));
 
-  for (int i = 3; i < argc; ++i) {
-    if (std::strcmp(argv[i], "--out") == 0 && i + 1 < argc) {
+  for (int i = number_of_required_args; i < argc; ++i) {
+    if (std::strcmp(argv[i], out_file_arg) == 0 && i + 1 < argc) {
       out_file = argv[i + 1];
-    } else if (std::strcmp(argv[i], "--skip_empty") == 0 && i + 1 < argc) {
-      skip_empty = std::strcmp(argv[i + 1], "true") == 0;
+    } else if (std::strcmp(argv[i], skip_empty_arg) == 0) {
+      skip_empty = true;
     }
   }
-
-  if (mode == "--print_ast") {
+  if (mode == help_mode) {
+    print_help();
+  } else if (mode == print_ast_mode) {
     if (!out_file.empty()) {
       std::ofstream out(out_file);
       if (!out.is_open()) {
@@ -102,9 +117,9 @@ int main(int argc, char** argv) {
     } else {
       print_ast(code, std::cout, skip_empty);
     }
-  } else if (mode == "--interpret") {
+  } else if (mode == interpret_mode) {
     interpret(code);
-  } else if (mode == "--execute") {
+  } else if (mode == execute_mode) {
     execute(code);
   } else {
     std::cerr << "Unknown mode\n";
