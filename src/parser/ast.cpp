@@ -22,26 +22,35 @@ FunctionCallNode::FunctionCallNode(pmr_unique_ptr<IdentifierNode>&& name,
                                    const tkn::Position& position)
     : ASTNode(position), name{std::move(name)}, arguments{&alloc::mr} {}
 
-ExpressionNode::ExpressionNode(std::variant<OrNode, AssignmentNode>&& node,
-                               const tkn::Position& position)
+ExpressionNode::ExpressionNode(
+    std::variant<OrNode, AssignmentNode, IfExpressionNode,
+                 BlockExpressionNode>&& node,
+    const tkn::Position& position)
     : Storage<tkn::Position, Type>(position, Type{}),
-      node{alloc::make_unique_pmr<std::variant<OrNode, AssignmentNode>>(
+      node{alloc::make_unique_pmr<std::variant<
+          OrNode, AssignmentNode, IfExpressionNode, BlockExpressionNode>>(
           std::move(node))} {}
 
-ExpressionStatements::ExpressionStatements(ExpressionNode&& expr)
-    : expr{std::move(expr)}, statements{&alloc::mr} {}
+ExpressionStatements::ExpressionStatements(
+    pmr_unique_ptr<ExpressionNode>&& expr,
+    pmr_unique_ptr<BlockExpressionNode>&& block, const tkn::Position& position)
+    : ASTNode(position), expr{std::move(expr)}, block{std::move(block)} {}
 
-IfStatementNode::IfStatementNode(pmr_unique_ptr<ExpressionNode>&& condition,
-                                 const tkn::Position& position)
-    : ASTNode(position), condition{std::move(condition)}, body{&alloc::mr},
-      elif_bodies{&alloc::mr}, else_body{&alloc::mr} {}
+BlockExpressionNode::BlockExpressionNode(const tkn::Position& position)
+    : ASTNode(position), statements{&alloc::mr}, value{std::nullopt} {}
 
-StatementNode::StatementNode(std::variant<ExpressionNode, IfStatementNode,
-                                          VariableDefinitionNode>&& node,
-                             const tkn::Position& position)
+IfExpressionNode::IfExpressionNode(pmr_unique_ptr<ExpressionNode>&& condition,
+                                   pmr_unique_ptr<BlockExpressionNode>&& body,
+                                   const tkn::Position& position)
+    : ASTNode(position), condition{std::move(condition)}, body{std::move(body)},
+      elif_bodies{&alloc::mr} {}
+
+StatementNode::StatementNode(
+    std::variant<ExpressionNode, VariableDefinitionNode>&& node,
+    const tkn::Position& position)
     : ASTNode(position),
-      node{alloc::make_unique_pmr<std::variant<ExpressionNode, IfStatementNode,
-                                               VariableDefinitionNode>>(
+      node{alloc::make_unique_pmr<
+          std::variant<ExpressionNode, VariableDefinitionNode>>(
           std::move(node))} {}
 
 VariableDefinitionNode::VariableDefinitionNode(
@@ -50,6 +59,6 @@ VariableDefinitionNode::VariableDefinitionNode(
 
 FunctionDefinitionNode::FunctionDefinitionNode(
     pmr_unique_ptr<IdentifierNode>&& name, const tkn::Position& position)
-    : ASTNode(position), name{std::move(name)}, body{&alloc::mr} {}
+    : ASTNode(position), name{std::move(name)} {}
 
 } // namespace ast

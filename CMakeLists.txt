@@ -56,13 +56,6 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_link_options(compiler PRIVATE -fsanitize=address,undefined)
 endif()
 
-add_custom_target(run
-    COMMAND $<TARGET_FILE:compiler>
-    DEPENDS compiler
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMENT "Running compiler"
-)
-
 enable_testing()
 
 add_subdirectory(tests)

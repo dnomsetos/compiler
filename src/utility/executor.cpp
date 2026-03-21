@@ -8,6 +8,11 @@
 #include <scanner/token.hpp>
 #include <utility/executor.hpp>
 
+std::ostream& operator<<(std::ostream& out, const Dummy&) {
+  out << "void";
+  return out;
+}
+
 void execute_variable_definition(
     const ast::VariableDefinitionNode& var_def,
     std::unordered_map<std::string, calc_result_t>& variables) {
@@ -73,15 +78,19 @@ execute_program(const ast::Program& program,
     throw std::runtime_error("no main function");
   }
 
-  if (main->argument_lits.size() != 0) {
+  if (main->argument_list.size() != 0) {
     throw std::runtime_error("main function has arguments");
   }
 
-  for (auto& statement : main->body) {
+  for (auto& statement : main->body->statements) {
     execute_statement(statement, variables);
   }
 
-  return execute_expression(*main->return_value, variables);
+  if (!main->body->value.has_value()) {
+    return Dummy{};
+  }
+
+  return execute_expression(*main->body->value.value(), variables);
 }
 
 void execute_statement(
@@ -96,44 +105,55 @@ void execute_statement(
     auto& var_def = std::get<ast::VariableDefinitionNode>(*statement.node);
 
     execute_variable_definition(var_def, variables);
+  }
+}
 
-  } else if (std::holds_alternative<ast::IfStatementNode>(*statement.node)) {
-    auto& if_stmt = std::get<ast::IfStatementNode>(*statement.node);
+calc_result_t execute_block_expression(
+    const ast::BlockExpressionNode& expression,
+    std::unordered_map<std::string, calc_result_t>& variables) {
 
-    auto value = execute_expression(*if_stmt.condition, variables);
+  for (auto& stmt : expression.statements) {
+    execute_statement(stmt, variables);
+  }
 
-    if (!std::holds_alternative<bool>(value)) {
-      throw std::runtime_error(
-          "type of condition in if statement must be bool");
+  if (!expression.value.has_value()) {
+    return Dummy{};
+  }
+
+  return execute_expression(*expression.value.value(), variables);
+}
+
+calc_result_t execute_if_expression(
+    const ast::IfExpressionNode& expression,
+    std::unordered_map<std::string, calc_result_t>& variables) {
+
+  auto cond = execute_expression(*expression.condition, variables);
+
+  if (!std::holds_alternative<bool>(cond)) {
+    throw std::runtime_error("condition in if expression is not bool");
+  }
+
+  if (std::get<bool>(cond)) {
+    return execute_block_expression(*expression.body, variables);
+  }
+
+  for (auto& elif : expression.elif_bodies) {
+    auto elif_condition = execute_expression(*elif.expr, variables);
+
+    if (!std::holds_alternative<bool>(elif_condition)) {
+      throw std::runtime_error("codition in else if is not bool");
     }
 
-    if (std::get<bool>(value)) {
-      for (auto& statement : if_stmt.body) {
-        execute_statement(statement, variables);
-      }
-      return;
-    }
-
-    for (auto& ex_stmts : if_stmt.elif_bodies) {
-      value = execute_expression(ex_stmts.expr, variables);
-
-      if (!std::holds_alternative<bool>(value)) {
-        throw std::runtime_error(
-            "type of condition in elif statement must be bool");
-      }
-
-      if (std::get<bool>(value)) {
-        for (auto& statement : ex_stmts.statements) {
-          execute_statement(statement, variables);
-        }
-        return;
-      }
-    }
-
-    for (auto& statement : if_stmt.else_body) {
-      execute_statement(statement, variables);
+    if (std::get<bool>(elif_condition)) {
+      return execute_block_expression(*elif.block, variables);
     }
   }
+
+  if (expression.else_body.has_value()) {
+    return execute_block_expression(*expression.else_body.value(), variables);
+  }
+
+  return Dummy{};
 }
 
 calc_result_t
@@ -160,16 +180,23 @@ execute_expression(const ast::ExpressionNode& expression,
 
     return value;
   }
+
   if (std::holds_alternative<ast::OrNode>(*expression.node)) {
     return execute_or(std::get<ast::OrNode>(*expression.node), variables);
   }
-  return true;
+
+  if (std::holds_alternative<ast::BlockExpressionNode>(*expression.node)) {
+    return execute_block_expression(
+        std::get<ast::BlockExpressionNode>(*expression.node), variables);
+  }
+
+  if (std::holds_alternative<ast::IfExpressionNode>(*expression.node)) {
+    return execute_if_expression(
+        std::get<ast::IfExpressionNode>(*expression.node), variables);
+  }
+
+  throw std::runtime_error("unknown expression");
 }
-
-template <typename T> struct is_variant : std::false_type {};
-
-template <typename... Ts>
-struct is_variant<std::variant<Ts...>> : std::true_type {};
 
 template <typename NodeT, typename PrevExecFn, typename OpHandler>
 calc_result_t execute_binary_op_impl(
@@ -210,7 +237,7 @@ execute_or(const ast::OrNode& expression,
 
   return execute_binary_op_impl(
       expression, variables, execute_xor,
-      [](auto const& op, auto&& l, auto&& r) -> std::optional<calc_result_t> {
+      [](const auto& op, auto&& l, auto&& r) -> std::optional<calc_result_t> {
         if (op == tkn::Or{}) {
           if constexpr (requires { l | r; }) {
             return l | r;
@@ -419,16 +446,16 @@ execute_primary(const ast::PrimaryNode& expression,
   if (std::holds_alternative<ast::LiteralNode>(*expression.primary)) {
     auto& literal = *std::get<ast::LiteralNode>(*expression.primary).literal;
 
-    if (std::holds_alternative<tkn::IntLiteral>(literal)) {
-      return static_cast<std::int64_t>(
-          std::get<tkn::IntLiteral>(literal).value);
-    } else if (std::holds_alternative<tkn::BoolLiteral>(literal)) {
-      return std::get<tkn::BoolLiteral>(literal).value;
-    } else if (std::holds_alternative<tkn::FloatLiteral>(literal)) {
-      return std::get<tkn::FloatLiteral>(literal).value;
-    } else if (std::holds_alternative<tkn::StringLiteral>(literal)) {
-      return std::get<tkn::StringLiteral>(literal).value;
-    }
+    return std::visit(
+        [](auto&& literal) -> calc_result_t {
+          if constexpr (std::is_same_v<std::decay_t<decltype(literal.value)>,
+                                       std::uint64_t>) {
+            return static_cast<std::int64_t>(literal.value);
+          } else {
+            return literal.value;
+          }
+        },
+        literal);
   }
 
   if (std::holds_alternative<ast::ExpressionNode>(*expression.primary)) {
@@ -453,7 +480,7 @@ execute_primary(const ast::PrimaryNode& expression,
                   std::cout << "false ";
                 }
               } else if constexpr (requires { std::cout << value; }) {
-                std::cout << value;
+                std::cout << value << ' ';
               }
             },
             result);

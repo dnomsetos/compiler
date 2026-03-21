@@ -41,6 +41,12 @@ template <typename... Ts>
 struct TupleToVariant<TypeTuple<Ts...>>
     : std::type_identity<std::variant<Ts...>> {};
 
+template <typename T> struct VariantToTuple;
+
+template <typename... Ts>
+struct VariantToTuple<std::variant<Ts...>>
+    : std::type_identity<TypeTuple<Ts...>> {};
+
 template <TypeTupleLike Tuple> struct TupleSize;
 
 template <typename... Ts>
@@ -49,3 +55,6 @@ struct TupleSize<TypeTuple<Ts...>>
 
 template <typename T>
 using type_tuple_to_variant_t = typename TupleToVariant<T>::type;
+
+template <typename T>
+using variant_to_type_tuple_t = typename VariantToTuple<T>::type;

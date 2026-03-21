@@ -2,6 +2,7 @@
 #include <parser/parse.hpp>
 #include <scanner/tokenize.hpp>
 #include <utility/executor.hpp>
+#include <visitors/interpreter_visitor.hpp>
 
 TEST(ParserTest, Test1) {
   auto tokens = tokenize("var x : int;"
@@ -17,8 +18,12 @@ TEST(ParserTest, Test1) {
   std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
+  InterpreterVisitor visitor;
+  auto interpreter_result = visitor(*result.value().first);
+
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(std::get<std::int64_t>(execute_result), 7);
+  ASSERT_EQ(std::get<std::int64_t>(interpreter_result), 7);
 }
 
 TEST(ParserTest, Test2) {
@@ -32,7 +37,7 @@ TEST(ParserTest, Test2) {
                          "        x = 0;"
                          "    } else {"
                          "        x = 1;"
-                         "    }"
+                         "    };"
                          "    x"
                          "}");
   auto mr = std::pmr::monotonic_buffer_resource();
@@ -42,8 +47,12 @@ TEST(ParserTest, Test2) {
   std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
+  InterpreterVisitor visitor;
+  auto interpreter_result = visitor(*result.value().first);
+
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(std::get<std::int64_t>(execute_result), 0);
+  ASSERT_EQ(std::get<std::int64_t>(interpreter_result), 0);
 }
 
 TEST(ParserTest, Test3) {
@@ -62,8 +71,12 @@ TEST(ParserTest, Test3) {
   std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
+  InterpreterVisitor visitor;
+  auto interpreter_result = visitor(*result.value().first);
+
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(std::get<std::int64_t>(execute_result), 2);
+  ASSERT_EQ(std::get<std::int64_t>(interpreter_result), 2);
 }
 
 TEST(ParserTest, Test4) {
@@ -82,8 +95,12 @@ TEST(ParserTest, Test4) {
   std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
+  InterpreterVisitor visitor;
+  auto interpreter_result = visitor(*result.value().first);
+
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(std::get<std::int64_t>(execute_result), 8);
+  ASSERT_EQ(std::get<std::int64_t>(interpreter_result), 8);
 }
 
 TEST(ParserTest, Test5) {
@@ -100,8 +117,12 @@ TEST(ParserTest, Test5) {
   std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
+  InterpreterVisitor visitor;
+  auto interpreter_result = visitor(*result.value().first);
+
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(std::get<std::string>(execute_result), "Hello, world");
+  ASSERT_EQ(std::get<std::string>(interpreter_result), "Hello, world");
 }
 
 TEST(ParserTest, Test6) {
@@ -120,8 +141,12 @@ TEST(ParserTest, Test6) {
   std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
+  InterpreterVisitor visitor;
+  auto interpreter_result = visitor(*result.value().first);
+
   ASSERT_TRUE(result.has_value());
   ASSERT_DOUBLE_EQ(std::get<double>(execute_result), 13.14);
+  ASSERT_DOUBLE_EQ(std::get<double>(interpreter_result), 13.14);
 }
 
 TEST(ParserTest, Test7) {
@@ -133,10 +158,10 @@ TEST(ParserTest, Test7) {
                          "            x = x - 10;"
                          "        } else {"
                          "            x = x - 1;"
-                         "        }"
+                         "        };"
                          "    } else {"
                          "        x = x + 1;"
-                         "    }"
+                         "    };"
                          "    x * x"
                          "}");
   auto mr = std::pmr::monotonic_buffer_resource();
@@ -146,8 +171,12 @@ TEST(ParserTest, Test7) {
   std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
+  InterpreterVisitor visitor;
+  auto interpreter_result = visitor(*result.value().first);
+
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(std::get<std::int64_t>(execute_result), 9);
+  ASSERT_EQ(std::get<std::int64_t>(interpreter_result), 9);
 }
 
 TEST(ParserTest, Test8) {
@@ -165,8 +194,12 @@ TEST(ParserTest, Test8) {
   std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
+  InterpreterVisitor visitor;
+  auto interpreter_result = visitor(*result.value().first);
+
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(std::get<bool>(execute_result), false);
+  ASSERT_EQ(std::get<bool>(interpreter_result), false);
 }
 
 TEST(ParserTest, Test9) {
@@ -183,8 +216,12 @@ TEST(ParserTest, Test9) {
   std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
+  InterpreterVisitor visitor;
+  auto interpreter_result = visitor(*result.value().first);
+
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(std::get<std::int64_t>(execute_result), 15);
+  ASSERT_EQ(std::get<std::int64_t>(interpreter_result), 15);
 }
 
 TEST(ParserTest, Test10) {
@@ -247,4 +284,55 @@ TEST(ParserTest, Test12) {
   auto result = parse_program(tokens.begin(), tokens.end());
 
   ASSERT_TRUE(result.has_value());
+}
+
+TEST(ParserTest, Test13) {
+  auto tokens = tokenize("var x : int = 4;"
+                         ""
+                         "fn main() {"
+                         "    x = {"
+                         "        var y : int = 42;"
+                         "        y - x"
+                         "    };"
+                         "    x + 5"
+                         "}");
+  auto mr = std::pmr::monotonic_buffer_resource();
+
+  auto result = parse_program(tokens.begin(), tokens.end());
+
+  std::unordered_map<std::string, calc_result_t> variables;
+  auto execute_result = execute_program(*result.value().first, variables);
+
+  InterpreterVisitor visitor;
+  auto interpreter_result = visitor(*result.value().first);
+
+  ASSERT_TRUE(result.has_value());
+  ASSERT_EQ(std::get<std::int64_t>(execute_result), 43);
+  ASSERT_EQ(std::get<std::int64_t>(interpreter_result), 43);
+}
+
+TEST(ParserTest, Test14) {
+  auto tokens = tokenize("var x : int = 4;"
+                         ""
+                         "fn main() {"
+                         "    if (x > 0) {"
+                         "        var y : int = x | 8;"
+                         "        y * x"
+                         "    } else {"
+                         "        x + 5"
+                         "    }"
+                         "}");
+  auto mr = std::pmr::monotonic_buffer_resource();
+
+  auto result = parse_program(tokens.begin(), tokens.end());
+
+  std::unordered_map<std::string, calc_result_t> variables;
+  auto execute_result = execute_program(*result.value().first, variables);
+
+  InterpreterVisitor visitor;
+  auto interpreter_result = visitor(*result.value().first);
+
+  ASSERT_TRUE(result.has_value());
+  ASSERT_EQ(std::get<std::int64_t>(execute_result), 48);
+  ASSERT_EQ(std::get<std::int64_t>(interpreter_result), 48);
 }
