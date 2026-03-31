@@ -149,6 +149,81 @@ void PrintVisitor::operator()(const ast::AssignmentNode& assignment) {
   tabs_.pop_back();
 }
 
+void PrintVisitor::operator()(const ast::LoopExpressionNode& loop) {
+  out_ << tabs_ << "loop";
+
+  if (loop.label.has_value()) {
+    out_ << " with label \"" << loop.label.value().name << "\"";
+  }
+  out_ << ":" << std::endl;
+
+  tabs_ += "  ";
+
+  for (auto& statement : loop.body) {
+    operator()(statement);
+  }
+
+  tabs_.pop_back();
+  tabs_.pop_back();
+}
+
+void PrintVisitor::operator()(const ast::BreakStatementNode& break_stmt) {
+  out_ << tabs_ << "break statement" << std::endl;
+
+  tabs_ += "  ";
+
+  if (break_stmt.label.has_value()) {
+    out_ << tabs_ << "with label \"" << break_stmt.label.value().name << "\""
+         << std::endl;
+  }
+
+  if (break_stmt.value.has_value()) {
+    out_ << tabs_ << "with expression:" << std::endl;
+    tabs_ += "  ";
+
+    operator()(*break_stmt.value.value());
+
+    tabs_.pop_back();
+    tabs_.pop_back();
+  }
+
+  tabs_.pop_back();
+  tabs_.pop_back();
+}
+
+void PrintVisitor::operator()(const ast::ContinueStatementNode& continue_stmt) {
+  out_ << tabs_ << "continue statement" << std::endl;
+
+  tabs_ += "  ";
+
+  if (continue_stmt.label.has_value()) {
+    out_ << tabs_ << "with label \"" << continue_stmt.label.value().name << "\""
+         << std::endl;
+  }
+
+  tabs_.pop_back();
+  tabs_.pop_back();
+}
+
+void PrintVisitor::operator()(const ast::ReturnStatementNode& return_stmt) {
+  out_ << tabs_ << "return statement" << std::endl;
+
+  tabs_ += "  ";
+
+  if (return_stmt.value.has_value()) {
+    out_ << tabs_ << "with expression:" << std::endl;
+    tabs_ += "  ";
+
+    operator()(*return_stmt.value.value());
+
+    tabs_.pop_back();
+    tabs_.pop_back();
+  }
+
+  tabs_.pop_back();
+  tabs_.pop_back();
+}
+
 template <typename BinaryNode>
 void PrintVisitor::operator()(const BinaryNode& node) {
   if (skip_empty_) {
@@ -208,7 +283,9 @@ void PrintVisitor::operator()(const ast::UnaryNode& unary_node) {
   tabs_ += "  ";
 
   if (unary_node.op.has_value()) {
-    std::cout << "unary operation: " << unary_node.op.value() << std::endl;
+    out_ << tabs_ << "unary operation: ";
+    std::visit([this](auto&& value) { out_ << value << std::endl; },
+               *unary_node.op.value());
   }
 
   operator()(*unary_node.primary);
@@ -298,6 +375,16 @@ void PrintVisitor::operator()(const ast::FunctionDefinitionNode& fn_def) {
 
   for (auto& statement : fn_def.body->statements) {
     operator()(statement);
+  }
+
+  if (fn_def.body->value.has_value()) {
+    out_ << tabs_ << "return value: " << std::endl;
+    tabs_ += "  ";
+
+    operator()(*fn_def.body->value.value());
+
+    tabs_.pop_back();
+    tabs_.pop_back();
   }
 
   tabs_.pop_back();

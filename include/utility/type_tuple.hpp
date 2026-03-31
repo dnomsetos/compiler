@@ -20,6 +20,9 @@ struct IsInTypeTuple<T, TypeTuple<Head, Tail...>>
     : std::conditional_t<std::is_same_v<T, Head>, std::true_type,
                          IsInTypeTuple<T, TypeTuple<Tail...>>> {};
 
+template <typename T, TypeTupleLike Tuple>
+constexpr bool is_in_type_tuple_v = IsInTypeTuple<T, Tuple>::value;
+
 template <typename T> struct IsInTypeTuple<T, TypeTuple<>> : std::false_type {};
 
 template <TypeTupleLike... Types> struct Concat;
@@ -58,3 +61,16 @@ using type_tuple_to_variant_t = typename TupleToVariant<T>::type;
 
 template <typename T>
 using variant_to_type_tuple_t = typename VariantToTuple<T>::type;
+
+template <typename T, TypeTupleLike Tuple, std::size_t I>
+struct TypeTupleIndexHelper;
+
+template <typename T, typename Head, typename... Tail, std::size_t I>
+struct TypeTupleIndexHelper<T, TypeTuple<Head, Tail...>, I>
+    : std::conditional_t<std::is_same_v<T, Head>,
+                         std::integral_constant<std::size_t, I>,
+                         TypeTupleIndexHelper<T, TypeTuple<Tail...>, I + 1>> {};
+
+template <typename T, TypeTupleLike Tuple>
+constexpr std::size_t type_tuple_index_v =
+    TypeTupleIndexHelper<T, Tuple, 0>::value;

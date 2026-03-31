@@ -22,6 +22,7 @@ void print_ast(const std::string& code, std::ostream& out, bool skip_empty) {
   out << "Printing AST\n";
 
   auto tokens = tokenize(code);
+
   auto ast = parse_program(tokens.begin(), tokens.end());
 
   if (!ast.has_value()) {

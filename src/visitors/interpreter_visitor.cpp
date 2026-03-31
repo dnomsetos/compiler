@@ -1,10 +1,16 @@
-#include "scanner/token.hpp"
+#include "parser/ast.hpp"
+#include "utility/type_tuple.hpp"
 #include <iostream>
 #include <stdexcept>
 #include <type_traits>
 
 #include <utility/token_utilities.hpp>
+#include <variant>
 #include <visitors/interpreter_visitor.hpp>
+
+bool InterpreterVisitor::check_interrupt() const {
+  return interrupt_index_ != without_interrupt;
+}
 
 calc_result_t
 InterpreterVisitor::operator()(const ast::IdentifierNode& identifier) {
@@ -36,6 +42,10 @@ calc_result_t
 InterpreterVisitor::operator()(const ast::FunctionCallNode& fn_call) {
   if (fn_call.name->identifier->name == "println") {
     for (auto& argument : fn_call.arguments) {
+      auto value = operator()(argument);
+      if (check_interrupt()) {
+        return Dummy{};
+      }
       std::visit(
           [](auto&& value) {
             if constexpr (std::is_same_v<std::decay_t<decltype(value)>, bool>) {
@@ -48,7 +58,8 @@ InterpreterVisitor::operator()(const ast::FunctionCallNode& fn_call) {
               std::cout << value << ' ';
             }
           },
-          operator()(argument));
+
+          value);
     }
 
     std::cout << std::endl;
@@ -68,36 +79,58 @@ calc_result_t
 InterpreterVisitor::operator()(const ast::BlockExpressionNode& expression) {
   for (auto& stmt : expression.statements) {
     operator()(stmt);
+    if (check_interrupt()) {
+      return Dummy{};
+    }
   }
 
   if (!expression.value.has_value()) {
     return Dummy{};
   }
 
-  return operator()(*expression.value.value());
+  auto result = operator()(*expression.value.value());
+  if (check_interrupt()) {
+    return Dummy{};
+  }
+  return result;
 }
 
 calc_result_t
 InterpreterVisitor::operator()(const ast::IfExpressionNode& expression) {
   auto value = operator()(*expression.condition);
+  if (check_interrupt()) {
+    return Dummy{};
+  }
 
   if (!std::holds_alternative<bool>(value)) {
     throw std::runtime_error("condition in if expression is not bool");
   }
 
   if (std::get<bool>(value)) {
-    return operator()(*expression.body);
+    auto value = operator()(*expression.body);
+    if (check_interrupt()) {
+      return Dummy{};
+    }
+
+    return value;
   }
 
   for (auto& elif : expression.elif_bodies) {
     auto elif_condition = operator()(*elif.expr);
+    if (check_interrupt()) {
+      return Dummy{};
+    }
 
     if (!std::holds_alternative<bool>(elif_condition)) {
       throw std::runtime_error("codition in else if is not bool");
     }
 
     if (std::get<bool>(elif_condition)) {
-      return operator()(*elif.block);
+      auto value = operator()(*elif.block);
+      if (check_interrupt()) {
+        return Dummy{};
+      }
+      return value;
     }
   }
 
@@ -105,7 +138,12 @@ InterpreterVisitor::operator()(const ast::IfExpressionNode& expression) {
     return Dummy{};
   }
 
-  return operator()(*expression.else_body.value());
+  auto result = operator()(*expression.else_body.value());
+  if (check_interrupt()) {
+    return Dummy{};
+  }
+
+  return result;
 }
 
 calc_result_t
@@ -117,17 +155,93 @@ InterpreterVisitor::operator()(const ast::AssignmentNode& assignment) {
   }
 
   auto value = operator()(*assignment.right);
+  if (check_interrupt()) {
+    return Dummy{};
+  }
+
   it->second = value;
 
   return value;
 }
 
+calc_result_t
+InterpreterVisitor::operator()(const ast::LoopExpressionNode& loop) {
+  for (;;) {
+    for (auto& stmt : loop.body) {
+      operator()(stmt);
+
+      if (check_interrupt()) {
+        if (interrupt_index_ == type_tuple_index_v<ast::ReturnStatementNode,
+                                                   ast::InterruptNodeTuple>) {
+          return Dummy{};
+        } else {
+          if (!desired_label_.has_value() || desired_label_ == loop.label) {
+            std::size_t index = interrupt_index_;
+
+            interrupt_index_ = without_interrupt;
+            desired_label_.reset();
+
+            if (index == type_tuple_index_v<ast::BreakStatementNode,
+                                            ast::InterruptNodeTuple>) {
+              if (desired_value_.has_value()) {
+                auto result = std::move(desired_value_.value());
+                desired_value_.reset();
+                return result;
+              } else {
+                return Dummy{};
+              }
+            } else {
+              break;
+            }
+          } else {
+            return Dummy{};
+          }
+        }
+      }
+    }
+  }
+
+  return Dummy{};
+}
+
+template <typename InterruptNode>
+  requires is_in_type_tuple_v<InterruptNode, ast::InterruptNodeTuple>
+calc_result_t InterpreterVisitor::operator()(const InterruptNode& interrupt) {
+  if constexpr (requires { interrupt.label; }) {
+    if (interrupt.label.has_value()) {
+      desired_label_.emplace(interrupt.label.value());
+    }
+  }
+
+  if constexpr (requires { interrupt.value; }) {
+    if (interrupt.value.has_value()) {
+      auto value = operator()(*interrupt.value.value());
+
+      if (check_interrupt()) {
+        return Dummy{};
+      }
+
+      desired_value_.emplace(std::move(value));
+    }
+  }
+
+  interrupt_index_ = type_tuple_index_v<InterruptNode, ast::InterruptNodeTuple>;
+  return Dummy{};
+}
+
 template <typename BinaryNode>
+  requires is_in_type_tuple_v<BinaryNode, ast::BinaryNodeTuple>
 calc_result_t InterpreterVisitor::operator()(const BinaryNode& node) {
   auto value = operator()(*node.left);
+  if (check_interrupt()) {
+    return Dummy{};
+  }
 
   for (auto& [op, in_node] : node.right) {
     auto result = operator()(in_node);
+    if (check_interrupt()) {
+      return Dummy{};
+    }
 
     if (value.index() != result.index()) {
       throw std::runtime_error("type mismatch in expression");
@@ -150,6 +264,9 @@ calc_result_t InterpreterVisitor::operator()(const BinaryNode& node) {
 
 calc_result_t InterpreterVisitor::operator()(const ast::UnaryNode& unary_node) {
   auto value = operator()(*unary_node.primary);
+  if (check_interrupt()) {
+    return Dummy{};
+  }
 
   if (!unary_node.op.has_value()) {
     return value;
@@ -185,8 +302,12 @@ InterpreterVisitor::operator()(const ast::VariableDefinitionNode& var_def) {
       throw std::runtime_error("invalid variable definition");
     }
 
-    variables_.emplace(
-        var_def.name->identifier->name, operator()(*var_def.value.value()));
+    auto value = operator()(*var_def.value.value());
+    if (check_interrupt()) {
+      return Dummy{};
+    }
+
+    variables_.emplace(var_def.name->identifier->name, std::move(value));
 
     return Dummy{};
   }
@@ -207,6 +328,9 @@ InterpreterVisitor::operator()(const ast::VariableDefinitionNode& var_def) {
   }
 
   auto value = operator()(*var_def.value.value());
+  if (check_interrupt()) {
+    return Dummy{};
+  }
 
   if (value.index() !=
       static_cast<std::size_t>(type_it - std::begin(default_value_table))) {
@@ -246,11 +370,19 @@ calc_result_t InterpreterVisitor::operator()(const ast::Program& program) {
 
   for (auto& stmt : main->body->statements) {
     operator()(stmt);
+    if (check_interrupt()) {
+      return Dummy{};
+    }
   }
 
   if (!main->body->value.has_value()) {
     return Dummy{};
   }
 
-  return operator()(*main->body->value.value());
+  auto result = operator()(*main->body->value.value());
+  if (check_interrupt()) {
+    return Dummy{};
+  }
+
+  return result;
 }

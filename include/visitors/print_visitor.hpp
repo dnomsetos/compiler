@@ -18,6 +18,14 @@ public:
 
   void operator()(const ast::AssignmentNode& assignment);
 
+  void operator()(const ast::LoopExpressionNode& loop);
+
+  void operator()(const ast::BreakStatementNode& break_stmt);
+
+  void operator()(const ast::ContinueStatementNode& continue_stmt);
+
+  void operator()(const ast::ReturnStatementNode& return_stmt);
+
   template <typename BinaryNode> void operator()(const BinaryNode& binary_node);
 
   void operator()(const ast::UnaryNode& unary_node);

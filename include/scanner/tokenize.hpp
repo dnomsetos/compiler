@@ -5,8 +5,11 @@
 #include <scanner/token.hpp>
 
 inline const std::pair<const char*, tkn::token_variant_t> keyword_table[] = {
-    {"fn", tkn::Fn{}},     {"var", tkn::Var{}},   {"if", tkn::If{}},
-    {"else", tkn::Else{}}, {"true", tkn::True{}}, {"false", tkn::False{}},
+    {"fn", tkn::Fn{}},         {"var", tkn::Var{}},
+    {"if", tkn::If{}},         {"else", tkn::Else{}},
+    {"true", tkn::True{}},     {"false", tkn::False{}},
+    {"break", tkn::Break{}},   {"continue", tkn::Continue{}},
+    {"return", tkn::Return{}}, {"loop", tkn::Loop{}},
 };
 
 inline const std::pair<const char*, tkn::token_variant_t>
