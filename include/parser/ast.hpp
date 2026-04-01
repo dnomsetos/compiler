@@ -200,7 +200,8 @@ static_assert(type_tuple_index_v<ReturnStatementNode, InterruptNodeTuple> == 2);
 using InterruptNodeVariant = type_tuple_to_variant_t<InterruptNodeTuple>;
 
 using StatementNodeTuple =
-    TypeTuple<ExpressionNode, VariableDefinitionNode, BreakStatementNode,
+    TypeTuple<ExpressionNode, VariableDefinitionNode, BlockExpressionNode,
+              IfExpressionNode, LoopExpressionNode, BreakStatementNode,
               ContinueStatementNode, ReturnStatementNode>;
 
 using StatementNodeVariant = type_tuple_to_variant_t<StatementNodeTuple>;

@@ -407,23 +407,11 @@ auto parse_if_expression(ParseIter begin)
   }
   ++begin;
 
-  if (!std::holds_alternative<tkn::LeftParent>(begin->token_variant)) {
-    return std::unexpected(UnexpectedToken{begin->position, tkn::LeftParent{},
-                                           begin->token_variant});
-  }
-  ++begin;
-
   auto condition = parse_expression(begin);
   if (!condition.has_value()) {
     return std::unexpected(condition.error());
   }
   begin = condition.value().second;
-
-  if (!std::holds_alternative<tkn::RightParent>(begin->token_variant)) {
-    return std::unexpected(UnexpectedToken{begin->position, tkn::RightParent{},
-                                           begin->token_variant});
-  }
-  ++begin;
 
   auto block = parse_block_expression(begin);
   if (!block.has_value()) {
@@ -444,23 +432,11 @@ auto parse_if_expression(ParseIter begin)
     ++begin;
     auto block_begin = begin;
 
-    if (!std::holds_alternative<tkn::LeftParent>(begin->token_variant)) {
-      return std::unexpected(UnexpectedToken{begin->position, tkn::LeftParent{},
-                                             begin->token_variant});
-    }
-    ++begin;
-
     auto condition = parse_expression(begin);
     if (!condition.has_value()) {
       return std::unexpected(condition.error());
     }
     begin = condition.value().second;
-
-    if (!std::holds_alternative<tkn::RightParent>(begin->token_variant)) {
-      return std::unexpected(UnexpectedToken{
-          begin->position, tkn::RightParent{}, begin->token_variant});
-    }
-    ++begin;
 
     auto block = parse_block_expression(begin);
     if (!block.has_value()) {
@@ -490,12 +466,36 @@ auto parse_if_expression(ParseIter begin)
 
 auto parse_statement(ParseIter begin) -> ParseResult<ast::StatementNode> {
 
+  auto block_expr = parse_block_expression(begin);
+  if (block_expr.has_value()) {
+    return std::make_pair(
+        ast::alloc::make_unique_pmr<ast::StatementNode>(
+            std::move(*block_expr.value().first), begin->position),
+        block_expr.value().second);
+  }
+
   auto var_def = parse_variable_definition(begin);
   if (var_def.has_value()) {
     return std::make_pair(
         ast::alloc::make_unique_pmr<ast::StatementNode>(
             std::move(*var_def.value().first), begin->position),
         var_def.value().second);
+  }
+
+  auto if_expr = parse_if_expression(begin);
+  if (if_expr.has_value()) {
+    return std::make_pair(
+        ast::alloc::make_unique_pmr<ast::StatementNode>(
+            std::move(*if_expr.value().first), begin->position),
+        if_expr.value().second);
+  }
+
+  auto loop_expr = parse_loop_expression(begin);
+  if (loop_expr.has_value()) {
+    return std::make_pair(
+        ast::alloc::make_unique_pmr<ast::StatementNode>(
+            std::move(*loop_expr.value().first), begin->position),
+        loop_expr.value().second);
   }
 
   auto break_stmt =

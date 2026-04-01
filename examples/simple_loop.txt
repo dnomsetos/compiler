@@ -9,18 +9,18 @@ fn main() {
     inner_val = loop {
       if (i % 2 == 0) {
         continue 'outer;
-      };
+      }
 
       if (i > 7) {
         break 'outer i * 10;
-      };
+      }
 
       break i + 1;
     };
 
     if (inner_val > 5) {
       break inner_val * 2;
-    };
+    }
   };
 
   result
