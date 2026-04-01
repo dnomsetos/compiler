@@ -1,6 +1,5 @@
 #include <cassert>
 #include <expected>
-#include <iostream>
 #include <variant>
 
 #include <parser/ast.hpp>
@@ -468,6 +467,11 @@ auto parse_statement(ParseIter begin) -> ParseResult<ast::StatementNode> {
 
   auto block_expr = parse_block_expression(begin);
   if (block_expr.has_value()) {
+    begin = block_expr.value().second;
+    if (std::holds_alternative<tkn::Semicolon>(begin->token_variant)) {
+      ++begin;
+    }
+
     return std::make_pair(
         ast::alloc::make_unique_pmr<ast::StatementNode>(
             std::move(*block_expr.value().first), begin->position),
@@ -484,18 +488,28 @@ auto parse_statement(ParseIter begin) -> ParseResult<ast::StatementNode> {
 
   auto if_expr = parse_if_expression(begin);
   if (if_expr.has_value()) {
+    begin = if_expr.value().second;
+    if (std::holds_alternative<tkn::Semicolon>(begin->token_variant)) {
+      ++begin;
+    }
+
     return std::make_pair(
         ast::alloc::make_unique_pmr<ast::StatementNode>(
             std::move(*if_expr.value().first), begin->position),
-        if_expr.value().second);
+        begin);
   }
 
   auto loop_expr = parse_loop_expression(begin);
   if (loop_expr.has_value()) {
+    begin = loop_expr.value().second;
+    if (std::holds_alternative<tkn::Semicolon>(begin->token_variant)) {
+      ++begin;
+    }
+
     return std::make_pair(
         ast::alloc::make_unique_pmr<ast::StatementNode>(
             std::move(*loop_expr.value().first), begin->position),
-        loop_expr.value().second);
+        begin);
   }
 
   auto break_stmt =
