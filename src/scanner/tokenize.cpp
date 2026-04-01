@@ -2,9 +2,9 @@
 #include <cmath>
 #include <cstring>
 #include <iostream>
+#include <variant>
 
 #include <scanner/tokenize.hpp>
-#include <variant>
 
 bool identifier_filter(char c) {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
@@ -18,7 +18,6 @@ auto read_string(const std::string& code, std::size_t i, bool (*filter)(char))
     -> std::pair<std::string, std::size_t> {
 
   std::string name;
-
   while (i < code.size() && filter(code[i])) {
     if constexpr (std::is_same_v<Converter, StringLiteralConverter>) {
       if (code[i] == '\\') {
@@ -207,11 +206,47 @@ void read_language_symbol(const std::string& code, std::size_t& i,
   current_position.offset += token_size - 1;
 }
 
+void read_char_literal_or_label(const std::string& code, std::size_t& i,
+                                tkn::Point& current_position,
+                                std::deque<tkn::TokenInfo>& tokens) {
+
+  auto [name, new_i] =
+      read_string<DummyConverter>(code, i + 1, identifier_filter);
+
+  if (new_i + 1 >= code.size()) {
+    std::cerr << "Unterminated char literal at line " << current_position.line
+              << ", offset " << current_position.offset << "." << std::endl;
+    throw std::runtime_error("Unterminated char literal");
+  }
+
+  if (code[new_i + 1] == '\'') {
+    tokens.emplace_back(
+        tkn::CharLiteral{
+            .value = name[0],
+        },
+        tkn::Position{current_position.line, current_position.offset,
+                      new_i + 2 - i});
+
+    current_position.offset += new_i + 2 - i;
+    i = new_i + 1;
+    return;
+  }
+
+  tokens.emplace_back(
+      tkn::Label{
+          .name = name,
+      },
+      tkn::Position{current_position.line, current_position.offset,
+                    new_i + 1 - i});
+  current_position.offset += new_i + 1 - i;
+  i = new_i;
+}
+
 auto tokenize(const std::string& code) -> std::deque<tkn::TokenInfo> {
 
   std::deque<tkn::TokenInfo> tokens;
 
-  tkn::Point current_position = {.line = 1, .offset = 0};
+  tkn::Point current_position{.line = 1, .offset = 0};
 
   for (std::size_t i = 0; i < code.size(); ++i) {
     char c = code[i];
@@ -230,6 +265,8 @@ auto tokenize(const std::string& code) -> std::deque<tkn::TokenInfo> {
       read_identifier_or_keyword(code, i, current_position, tokens);
     } else if (c == '"') {
       read_string_literal(code, i, current_position, tokens);
+    } else if (c == '\'') {
+      read_char_literal_or_label(code, i, current_position, tokens);
     } else {
       read_language_symbol(code, i, current_position, tokens);
     }

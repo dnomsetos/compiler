@@ -1,6 +1,5 @@
-#include "scanner/token.hpp"
-#include "scanner/tokenize.hpp"
 #include <gtest/gtest.h>
+#include <scanner/tokenize.hpp>
 
 using namespace tkn;
 

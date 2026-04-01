@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <functional>
-#include <optional>
 #include <ostream>
 #include <stdexcept>
 #include <string>
@@ -102,7 +101,11 @@ namespace tkn {
           },                                                                   \
           value);                                                              \
     };                                                                         \
-  };
+  };                                                                           \
+  inline std::ostream& operator<<(std::ostream& os, const name&) {             \
+    os << #op;                                                                 \
+    return os;                                                                 \
+  }
 
 GENERATE_UNIVERSAL_OPERATION(Plus, +)
 GENERATE_UNIVERSAL_OPERATION(Minus, -)
@@ -122,11 +125,15 @@ GENERATE_BINARY_OPERATION(Xor, ^)
 GENERATE_UNARY_OPERATION(Not, !)
 GENERATE_EMPTY_TOKEN(Fn)
 GENERATE_EMPTY_TOKEN(Var)
+GENERATE_EMPTY_TOKEN(Break)
+GENERATE_EMPTY_TOKEN(Continue)
+GENERATE_EMPTY_TOKEN(Return)
 GENERATE_EMPTY_TOKEN(Arrow)
 GENERATE_EMPTY_TOKEN(Semicolon)
 GENERATE_EMPTY_TOKEN(Colon)
 GENERATE_EMPTY_TOKEN(If)
 GENERATE_EMPTY_TOKEN(Else)
+GENERATE_EMPTY_TOKEN(Loop)
 GENERATE_EMPTY_TOKEN(True)
 GENERATE_EMPTY_TOKEN(False)
 GENERATE_EMPTY_TOKEN(LeftBrace)
@@ -136,12 +143,27 @@ GENERATE_EMPTY_TOKEN(RightParent)
 GENERATE_EMPTY_TOKEN(Comma)
 GENERATE_EMPTY_TOKEN(EOFToken)
 
+struct Label {
+public:
+  std::string name;
+
+  friend bool operator==(const Label& left, const Label& right) = default;
+};
+
 struct Identifier {
 public:
   std::string name;
 
   friend bool operator==(const Identifier& left,
                          const Identifier& right) = default;
+};
+
+struct CharLiteral {
+public:
+  char value;
+
+  friend bool operator==(const CharLiteral& left,
+                         const CharLiteral& right) = default;
 };
 
 struct IntLiteral {
@@ -174,8 +196,8 @@ struct BoolLiteral {
                          const BoolLiteral& right) = default;
 };
 
-using LiteralTuple =
-    TypeTuple<IntLiteral, FloatLiteral, StringLiteral, BoolLiteral>;
+using LiteralTuple = TypeTuple<CharLiteral, IntLiteral, FloatLiteral,
+                               StringLiteral, BoolLiteral>;
 
 using UnaryOperatorTuple = TypeTuple<Plus, Minus, Not>;
 
@@ -193,14 +215,16 @@ using EqualityOperatorTuple = TypeTuple<Equal, NotEqual>;
 using HelperTuple = TypeTuple<Arrow, Semicolon, Colon, Comma, LeftBrace,
                               RightBrace, LeftParent, RightParent, EOFToken>;
 
-using KeywordsTuple = TypeTuple<Fn, Var, If, Else, True, False>;
+using KeywordsTuple = TypeTuple<Fn, Var, If, Else, Loop, True, False>;
+
+using InterruptTuple = TypeTuple<Break, Continue, Return>;
 
 using TokenTuple =
     Concat<LiteralTuple, LogicalOperatorTuple,
            HighPriorityArithmeticOperatorTuple,
            LowPriorityArithmeticOperatorTuple, EqualityOperatorTuple,
-           ComparisonOperatorTuple, HelperTuple, KeywordsTuple,
-           TypeTuple<Identifier, Assignment>>::type;
+           ComparisonOperatorTuple, HelperTuple, KeywordsTuple, InterruptTuple,
+           TypeTuple<Identifier, Assignment, Label>>::type;
 
 struct Point {
   std::size_t line;

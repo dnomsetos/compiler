@@ -63,8 +63,16 @@ auto parse_function_definition(ParseIter begin)
 auto parse_variable_definition(ParseIter begin)
     -> ParseResult<ast::VariableDefinitionNode>;
 
+template <typename Node, typename Token>
+auto parse_loop_interrupt_statment(ParseIter begin) -> ParseResult<Node>;
+
+auto parse_return_statement(ParseIter begin)
+    -> ParseResult<ast::ReturnStatementNode>;
+
 auto parse_block_expression(ParseIter begin)
     -> ParseResult<ast::BlockExpressionNode>;
+
+auto parse_loop(ParseIter begin) -> ParseResult<ast::LoopExpressionNode>;
 
 auto parse_if_expression(ParseIter begin) -> ParseResult<ast::IfExpressionNode>;
 

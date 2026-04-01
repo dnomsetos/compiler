@@ -31,6 +31,7 @@ target_link_libraries(compiler_objects
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message(STATUS "Debug build with sanitizers")
     target_compile_options(compiler_objects
         PRIVATE
             -Wall -Wextra -Wpedantic -fsanitize=address,undefined

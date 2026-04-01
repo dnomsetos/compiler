@@ -3,10 +3,13 @@ definition ::= function_definition | variable_definition
 function_definition ::= "fn" identifier "(" ")" block_expression
 variable_definition ::= "var" identifier ":" identifier ";"
 arguments_list ::= (identifier : identifier ("," identifier : identifier)*) | eps
-statement ::= expression ";" | variable_definition
-expression ::= assignment | or | if_expression | block_expression
-block_expression ::= "{" definition* expression? "}"
-if_expression ::= "if" "(" expression ")" block_expression ("else" "if" "(" expression ")" block_expression)* ("else" block_expression)?
+interrupt_statement ::= ("break" | "continue") label? expression? ";"
+return_statement ::= "return" expression? ";"
+statement ::= expression ";" | variable_definition | interrupt_statement | return_statement | loop_expression | if_expression | block_expression
+expression ::= assignment | or | if_expression | block_expression | loop_expression
+loop_expression ::= label? ":" "loop" block_expression
+block_expression ::= "{" statement* expression? "}"
+if_expression ::= "if" expression block_expression ("else" "if" expression block_expression)* ("else" block_expression)?
 assignment ::= identifier "=" expression
 or ::= xor ("|" xor)*
 xor ::= and ("^" and)*

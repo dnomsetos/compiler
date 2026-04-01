@@ -1,3 +1,7 @@
+#pragma once
+
+#include <optional>
+
 #include <scanner/token.hpp>
 
 template <TypeTupleLike Tuple>
