@@ -1,33 +1,27 @@
 #pragma once
 
-#include <memory>
 #include <optional>
 #include <vector>
 
 #include <scanner/token.hpp>
-#include <utility/ast_allocator.hpp>
+#include <tables/types.hpp>
+#include <utility/allocator.hpp>
 #include <utility/storage.hpp>
 #include <utility/type_tuple.hpp>
 
 namespace ast {
 
-using ASTNode = Storage<tkn::Position>;
-
-struct Type {};
-
-template <typename T>
-using pmr_unique_ptr =
-    std::unique_ptr<T, alloc::MonotonicBufferResourceDeleter<T>>;
+using ASTNode = Storage<tkn::Position, tp::Type>;
 
 struct LiteralNode : ASTNode {
-  pmr_unique_ptr<type_tuple_to_variant_t<tkn::LiteralTuple>> literal;
+  alloc::pmr_unique_ptr<type_tuple_to_variant_t<tkn::LiteralTuple>> literal;
 
   LiteralNode(const type_tuple_to_variant_t<tkn::LiteralTuple>& literal,
               const tkn::Position& position);
 };
 
 struct IdentifierNode : ASTNode {
-  pmr_unique_ptr<tkn::Identifier> identifier;
+  alloc::pmr_unique_ptr<tkn::Identifier> identifier;
 
   IdentifierNode(const tkn::Identifier& identifier,
                  const tkn::Position& position);
@@ -43,43 +37,42 @@ using PrimaryNodeTuple =
 using PrimaryNodeVariant = type_tuple_to_variant_t<PrimaryNodeTuple>;
 
 struct FunctionCallNode : ASTNode {
-  pmr_unique_ptr<IdentifierNode> name;
+  alloc::pmr_unique_ptr<IdentifierNode> name;
   std::pmr::vector<ExpressionNode> arguments;
 
-  FunctionCallNode(pmr_unique_ptr<IdentifierNode>&& name,
+  FunctionCallNode(alloc::pmr_unique_ptr<IdentifierNode>&& name,
                    const tkn::Position& position);
 };
 
-struct PrimaryNode : Storage<tkn::Position, Type> {
-  pmr_unique_ptr<PrimaryNodeVariant> primary;
+struct PrimaryNode : ASTNode {
+  alloc::pmr_unique_ptr<PrimaryNodeVariant> primary;
 
   template <typename T>
   PrimaryNode(T&& primary, const tkn::Position& position)
-      : Storage<tkn::Position, Type>(position, Type{}),
+      : ASTNode(position, tp::Type{}),
         primary{alloc::make_unique_pmr<PrimaryNodeVariant>(
             std::in_place_type_t<std::decay_t<decltype(primary)>>{},
             std::forward<T>(primary))} {}
 };
 
-struct UnaryNode : Storage<tkn::Position, Type> {
-  pmr_unique_ptr<PrimaryNode> primary;
+struct UnaryNode : ASTNode {
+  alloc::pmr_unique_ptr<PrimaryNode> primary;
   std::optional<
-      pmr_unique_ptr<type_tuple_to_variant_t<tkn::UnaryOperatorTuple>>>
+      alloc::pmr_unique_ptr<type_tuple_to_variant_t<tkn::UnaryOperatorTuple>>>
       op;
 
-  UnaryNode(pmr_unique_ptr<PrimaryNode>&& primary,
+  UnaryNode(alloc::pmr_unique_ptr<PrimaryNode>&& primary,
             const tkn::Position& position)
-      : Storage<tkn::Position, Type>(position, Type{}),
-        primary{std::move(primary)} {}
+      : ASTNode(position, tp::Type{}), primary{std::move(primary)} {}
 };
 
 #define GENERATE_NODE(name, op, type)                                          \
-  struct name : Storage<tkn::Position, Type> {                                 \
-    pmr_unique_ptr<type> left;                                                 \
+  struct name : ASTNode {                                                      \
+    alloc::pmr_unique_ptr<type> left;                                          \
     std::pmr::vector<std::pair<op, type>> right;                               \
-    name(pmr_unique_ptr<type>&& left, const tkn::Position& position)           \
-        : Storage<tkn::Position, Type>(position, Type{}),                      \
-          left{std::move(left)}, right{&alloc::mr} {}                          \
+    name(alloc::pmr_unique_ptr<type>&& left, const tkn::Position& position)    \
+        : ASTNode(position, tp::Type{}), left{std::move(left)},                \
+          right{&alloc::mr} {}                                                 \
   };
 
 GENERATE_NODE(MultiplicationNode,
@@ -101,21 +94,25 @@ using BinaryNodeTuple =
     TypeTuple<AndNode, XorNode, OrNode, EqualityNode, ComparisonNode,
               AdditionNode, MultiplicationNode>;
 
-struct AssignmentNode : Storage<tkn::Position, Type> {
-  pmr_unique_ptr<IdentifierNode> left;
-  pmr_unique_ptr<ExpressionNode> right;
+using LogicalBinaryNodeTuple = TypeTuple<AndNode, XorNode, OrNode>;
+
+using ArithmeticBinaryNodeTuple = TypeTuple<AdditionNode, MultiplicationNode>;
+
+struct AssignmentNode : ASTNode {
+  alloc::pmr_unique_ptr<IdentifierNode> left;
+  alloc::pmr_unique_ptr<ExpressionNode> right;
 
   template <typename T1, typename T2>
   AssignmentNode(T1&& left, T2&& right, const tkn::Position& position)
-      : Storage<tkn::Position, Type>(position, Type{}),
-        left{std::forward<T1>(left)}, right{std::forward<T2>(right)} {}
+      : ASTNode(position, tp::Type{}), left{std::forward<T1>(left)},
+        right{std::forward<T2>(right)} {}
 };
 
 struct StatementNode;
 
 struct BlockExpressionNode : ASTNode {
   std::pmr::vector<StatementNode> statements;
-  std::optional<pmr_unique_ptr<ExpressionNode>> value;
+  std::optional<alloc::pmr_unique_ptr<ExpressionNode>> value;
 
   BlockExpressionNode(const tkn::Position& position);
 };
@@ -131,13 +128,13 @@ struct LoopExpressionNode : ASTNode {
 struct ExpressionStatements;
 
 struct IfExpressionNode : ASTNode {
-  pmr_unique_ptr<ExpressionNode> condition;
-  pmr_unique_ptr<BlockExpressionNode> body;
+  alloc::pmr_unique_ptr<ExpressionNode> condition;
+  alloc::pmr_unique_ptr<BlockExpressionNode> body;
   std::pmr::vector<ExpressionStatements> elif_bodies;
-  std::optional<pmr_unique_ptr<BlockExpressionNode>> else_body;
+  std::optional<alloc::pmr_unique_ptr<BlockExpressionNode>> else_body;
 
-  IfExpressionNode(pmr_unique_ptr<ExpressionNode>&& condition,
-                   pmr_unique_ptr<BlockExpressionNode>&& body,
+  IfExpressionNode(alloc::pmr_unique_ptr<ExpressionNode>&& condition,
+                   alloc::pmr_unique_ptr<BlockExpressionNode>&& body,
                    const tkn::Position& position);
 };
 
@@ -146,33 +143,32 @@ using ExpressionNodeTuple = TypeTuple<OrNode, AssignmentNode, IfExpressionNode,
 
 using ExpressionNodeVariant = type_tuple_to_variant_t<ExpressionNodeTuple>;
 
-struct ExpressionNode : Storage<tkn::Position, Type> {
-  pmr_unique_ptr<ExpressionNodeVariant> node;
+struct ExpressionNode : ASTNode {
+  alloc::pmr_unique_ptr<ExpressionNodeVariant> node;
 
   ExpressionNode(ExpressionNodeVariant&& node, const tkn::Position& position);
 };
 
-struct ExpressionStatements : ASTNode {
-  pmr_unique_ptr<ExpressionNode> expr;
-  pmr_unique_ptr<BlockExpressionNode> block;
+struct ExpressionStatements {
+  alloc::pmr_unique_ptr<ExpressionNode> expr;
+  alloc::pmr_unique_ptr<BlockExpressionNode> block;
 
-  ExpressionStatements(pmr_unique_ptr<ExpressionNode>&& expr,
-                       pmr_unique_ptr<BlockExpressionNode>&& block,
-                       const tkn::Position& position);
+  ExpressionStatements(alloc::pmr_unique_ptr<ExpressionNode>&& expr,
+                       alloc::pmr_unique_ptr<BlockExpressionNode>&& block);
 };
 
 struct VariableDefinitionNode : ASTNode {
-  pmr_unique_ptr<IdentifierNode> name;
-  std::optional<pmr_unique_ptr<IdentifierNode>> type;
-  std::optional<pmr_unique_ptr<ExpressionNode>> value;
+  alloc::pmr_unique_ptr<IdentifierNode> name;
+  std::optional<alloc::pmr_unique_ptr<IdentifierNode>> type;
+  std::optional<alloc::pmr_unique_ptr<ExpressionNode>> value;
 
-  VariableDefinitionNode(pmr_unique_ptr<IdentifierNode>&& name,
+  VariableDefinitionNode(alloc::pmr_unique_ptr<IdentifierNode>&& name,
                          const tkn::Position& position);
 };
 
 struct BreakStatementNode : ASTNode {
   std::optional<tkn::Label> label;
-  std::optional<pmr_unique_ptr<ExpressionNode>> value;
+  std::optional<alloc::pmr_unique_ptr<ExpressionNode>> value;
 
   BreakStatementNode(const tkn::Position& position);
 };
@@ -184,13 +180,16 @@ struct ContinueStatementNode : ASTNode {
 };
 
 struct ReturnStatementNode : ASTNode {
-  std::optional<pmr_unique_ptr<ExpressionNode>> value;
+  std::optional<alloc::pmr_unique_ptr<ExpressionNode>> value;
 
   ReturnStatementNode(const tkn::Position& position);
 };
 
 using InterruptNodeTuple =
     TypeTuple<BreakStatementNode, ContinueStatementNode, ReturnStatementNode>;
+
+template <typename T>
+concept InterruptNode = is_in_type_tuple_v<T, InterruptNodeTuple>;
 
 static_assert(type_tuple_index_v<BreakStatementNode, InterruptNodeTuple> == 0);
 static_assert(type_tuple_index_v<ContinueStatementNode, InterruptNodeTuple> ==
@@ -204,28 +203,31 @@ using StatementNodeTuple =
               IfExpressionNode, LoopExpressionNode, BreakStatementNode,
               ContinueStatementNode, ReturnStatementNode>;
 
+static_assert(is_subset_of_v<InterruptNodeTuple, StatementNodeTuple>);
+
 using StatementNodeVariant = type_tuple_to_variant_t<StatementNodeTuple>;
 
 struct StatementNode : ASTNode {
-  pmr_unique_ptr<StatementNodeVariant> node;
+  alloc::pmr_unique_ptr<StatementNodeVariant> node;
 
   StatementNode(StatementNodeVariant&& node, const tkn::Position& position);
 };
 
 struct FunctionDefinitionNode : ASTNode {
-  pmr_unique_ptr<IdentifierNode> name;
+  alloc::pmr_unique_ptr<IdentifierNode> name;
+  // first is name, second is type
   std::pmr::vector<std::pair<IdentifierNode, IdentifierNode>> argument_list;
-  pmr_unique_ptr<IdentifierNode> return_type;
-  pmr_unique_ptr<BlockExpressionNode> body;
+  alloc::pmr_unique_ptr<IdentifierNode> return_type;
+  alloc::pmr_unique_ptr<BlockExpressionNode> body;
 
-  FunctionDefinitionNode(pmr_unique_ptr<IdentifierNode>&& name,
+  FunctionDefinitionNode(alloc::pmr_unique_ptr<IdentifierNode>&& name,
                          const tkn::Position& position);
 };
 
-using DefinitionTuple =
+using DefinitionNodeTuple =
     TypeTuple<FunctionDefinitionNode, VariableDefinitionNode>;
 
-using DefinitionNodeVariant = type_tuple_to_variant_t<DefinitionTuple>;
+using DefinitionNodeVariant = type_tuple_to_variant_t<DefinitionNodeTuple>;
 
 struct Program {
   std::pmr::vector<DefinitionNodeVariant> definitions;

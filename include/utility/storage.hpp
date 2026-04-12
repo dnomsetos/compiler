@@ -6,27 +6,6 @@
 #include <scanner/token.hpp>
 #include <utility/type_tuple.hpp>
 
-template <TypeTupleLike T> struct TypeTuplePopBack;
-
-template <typename T>
-struct TypeTuplePopBack<TypeTuple<T>> : std::type_identity<TypeTuple<>> {};
-
-template <typename Head, typename... Tail>
-struct TypeTuplePopBack<TypeTuple<Head, Tail...>>
-    : std::type_identity<typename Concat<
-          TypeTuple<Head>,
-          typename TypeTuplePopBack<TypeTuple<Tail...>>::type>::type> {};
-
-template <>
-struct TypeTuplePopBack<TypeTuple<>> : std::type_identity<TypeTuple<>> {};
-
-template <TypeTupleLike T>
-using type_tuple_pop_back_t = typename TypeTuplePopBack<T>::type;
-
-static_assert(
-    std::is_same_v<TypeTuplePopBack<TypeTuple<int, bool, float>>::type,
-                   TypeTuple<int, bool>>);
-
 template <TypeTupleLike T> struct TypeTupleToStorage;
 
 template <typename... Ts> struct LastType;

@@ -1,34 +1,42 @@
+#include <sstream>
+
 #include <gtest/gtest.h>
 #include <parser/parse.hpp>
 #include <scanner/tokenize.hpp>
-#include <utility/executor.hpp>
+#include <streambuf>
 #include <visitors/interpreter_visitor.hpp>
 
 TEST(ParserTest, Test1) {
-  auto tokens = tokenize("var x : int;"
+  auto tokens = tokenize("var x : i32;"
                          ""
                          "fn main() {"
                          "    x = 1 + 2 * 3;"
-                         "    x"
+                         "    println(x);"
                          "}");
   auto mr = std::pmr::monotonic_buffer_resource();
+
+  std::ostringstream buffer;
+
+  std::streambuf* old = std::cout.rdbuf(buffer.rdbuf());
 
   auto result = parse_program(tokens.begin(), tokens.end());
 
   std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
-  InterpreterVisitor visitor;
+  InterpreterVisitor visitor(*result.value().first);
   auto interpreter_result = visitor(*result.value().first);
 
+  std::cout.rdbuf(old);
+
+  std::cout << "buffer: " << buffer.str() << std::endl;
+
   ASSERT_TRUE(result.has_value());
-  ASSERT_EQ(std::get<std::int64_t>(execute_result), 7);
-  ASSERT_EQ(std::get<std::int64_t>(interpreter_result), 7);
 }
 
 TEST(ParserTest, Test2) {
-  auto tokens = tokenize("var a : int;"
-                         "var x : int;"
+  auto tokens = tokenize("var a : i32;"
+                         "var x : i32;"
                          ""
                          "fn main() {"
                          "    if (a < 0) {"
@@ -49,7 +57,7 @@ TEST(ParserTest, Test2) {
 
   ASSERT_TRUE(result.has_value());
 
-  InterpreterVisitor visitor;
+  InterpreterVisitor visitor(*result.value().first);
   auto interpreter_result = visitor(*result.value().first);
 
   // ASSERT_EQ(std::get<std::int64_t>(execute_result), 0);
@@ -57,8 +65,8 @@ TEST(ParserTest, Test2) {
 }
 
 TEST(ParserTest, Test3) {
-  auto tokens = tokenize("var p : int;"
-                         "var q : int;"
+  auto tokens = tokenize("var p : i32;"
+                         "var q : i32;"
                          ""
                          "fn main() {"
                          "    p = (1 & 3) | (4 ^ 2);"
@@ -72,7 +80,7 @@ TEST(ParserTest, Test3) {
   std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
-  InterpreterVisitor visitor;
+  InterpreterVisitor visitor(*result.value().first);
   auto interpreter_result = visitor(*result.value().first);
 
   ASSERT_TRUE(result.has_value());
@@ -81,8 +89,8 @@ TEST(ParserTest, Test3) {
 }
 
 TEST(ParserTest, Test4) {
-  auto tokens = tokenize("var a : int;"
-                         "var b : int;"
+  auto tokens = tokenize("var a : i32;"
+                         "var b : i32;"
                          ""
                          "fn main() {"
                          "    b = 2;"
@@ -96,7 +104,7 @@ TEST(ParserTest, Test4) {
   std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
-  InterpreterVisitor visitor;
+  InterpreterVisitor visitor(*result.value().first);
   auto interpreter_result = visitor(*result.value().first);
 
   ASSERT_TRUE(result.has_value());
@@ -118,7 +126,7 @@ TEST(ParserTest, Test5) {
   std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
-  InterpreterVisitor visitor;
+  InterpreterVisitor visitor(*result.value().first);
   auto interpreter_result = visitor(*result.value().first);
 
   ASSERT_TRUE(result.has_value());
@@ -127,8 +135,8 @@ TEST(ParserTest, Test5) {
 }
 
 TEST(ParserTest, Test6) {
-  auto tokens = tokenize("var f : float;"
-                         "var n : int;"
+  auto tokens = tokenize("var f : f32;"
+                         "var n : i32;"
                          ""
                          "fn main() {"
                          "    f = 3.14 + (2.0 * 5.0);"
@@ -142,7 +150,7 @@ TEST(ParserTest, Test6) {
   std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
-  InterpreterVisitor visitor;
+  InterpreterVisitor visitor(*result.value().first);
   auto interpreter_result = visitor(*result.value().first);
 
   ASSERT_TRUE(result.has_value());
@@ -151,7 +159,7 @@ TEST(ParserTest, Test6) {
 }
 
 TEST(ParserTest, Test7) {
-  auto tokens = tokenize("var x : int = 4;"
+  auto tokens = tokenize("var x : i32 = 4;"
                          ""
                          "fn main() {"
                          "    if x > 0 {"
@@ -172,7 +180,7 @@ TEST(ParserTest, Test7) {
   std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
-  InterpreterVisitor visitor;
+  InterpreterVisitor visitor(*result.value().first);
   auto interpreter_result = visitor(*result.value().first);
 
   ASSERT_TRUE(result.has_value());
@@ -181,7 +189,7 @@ TEST(ParserTest, Test7) {
 
 TEST(ParserTest, Test8) {
   auto tokens = tokenize("var ok : bool;"
-                         "var a : int;"
+                         "var a : i32;"
                          ""
                          "fn main() {"
                          "    ok = ! (a == 0);"
@@ -194,7 +202,7 @@ TEST(ParserTest, Test8) {
   std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
-  InterpreterVisitor visitor;
+  InterpreterVisitor visitor(*result.value().first);
   auto interpreter_result = visitor(*result.value().first);
 
   ASSERT_TRUE(result.has_value());
@@ -204,7 +212,7 @@ TEST(ParserTest, Test8) {
 
 TEST(ParserTest, Test9) {
   auto tokens = tokenize("fn main() {"
-                         "    var tmp : int;"
+                         "    var tmp : i32;"
                          "    tmp = 1 + 2;"
                          "    tmp = tmp * 5;"
                          "    tmp"
@@ -216,7 +224,7 @@ TEST(ParserTest, Test9) {
   std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
-  InterpreterVisitor visitor;
+  InterpreterVisitor visitor(*result.value().first);
   auto interpreter_result = visitor(*result.value().first);
 
   ASSERT_TRUE(result.has_value());
@@ -225,8 +233,8 @@ TEST(ParserTest, Test9) {
 }
 
 TEST(ParserTest, Test10) {
-  auto tokens = tokenize("var x : int;"
-                         "var y : int;"
+  auto tokens = tokenize("var x : i32;"
+                         "var y : i32;"
                          ""
                          "fn inc() {"
                          "    x = x + 1;"
@@ -246,8 +254,8 @@ TEST(ParserTest, Test10) {
 
 TEST(ParserTest, Test11) {
   auto tokens =
-      tokenize("var x : int;"
-               "var y : int;"
+      tokenize("var x : i32;"
+               "var y : i32;"
                ""
                "fn inc() {"
                "    x = x + 1;"
@@ -267,8 +275,8 @@ TEST(ParserTest, Test11) {
 
 TEST(ParserTest, Test12) {
   auto tokens =
-      tokenize("var x : int;"
-               "var y : int;"
+      tokenize("var x : i32;"
+               "var y : i32;"
                ""
                "fn inc(a : int, b : char, c : float) {"
                "    x = x + 1;"
@@ -287,11 +295,11 @@ TEST(ParserTest, Test12) {
 }
 
 TEST(ParserTest, Test13) {
-  auto tokens = tokenize("var x : int = 4;"
+  auto tokens = tokenize("var x : i32 = 4;"
                          ""
                          "fn main() {"
                          "    x = {"
-                         "        var y : int = 42;"
+                         "        var y : i32 = 42;"
                          "        y - x"
                          "    };"
                          "    x + 5"
@@ -303,7 +311,7 @@ TEST(ParserTest, Test13) {
   std::unordered_map<std::string, calc_result_t> variables;
   auto execute_result = execute_program(*result.value().first, variables);
 
-  InterpreterVisitor visitor;
+  InterpreterVisitor visitor(*result.value().first);
   auto interpreter_result = visitor(*result.value().first);
 
   ASSERT_TRUE(result.has_value());

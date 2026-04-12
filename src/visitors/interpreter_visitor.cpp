@@ -1,5 +1,3 @@
-#include "parser/ast.hpp"
-#include "utility/type_tuple.hpp"
 #include <iostream>
 #include <stdexcept>
 #include <type_traits>
@@ -8,12 +6,15 @@
 #include <variant>
 #include <visitors/interpreter_visitor.hpp>
 
+InterpreterVisitor::InterpreterVisitor(const ast::Program& program) {}
+
 bool InterpreterVisitor::check_interrupt() const {
   return interrupt_index_ != without_interrupt;
 }
 
 calc_result_t
 InterpreterVisitor::operator()(const ast::IdentifierNode& identifier) {
+
   if (auto it = variables_.find(identifier.identifier->name);
       it != variables_.end()) {
     return it->second;
@@ -40,6 +41,7 @@ calc_result_t InterpreterVisitor::operator()(const ast::LiteralNode& literal) {
 
 calc_result_t
 InterpreterVisitor::operator()(const ast::FunctionCallNode& fn_call) {
+
   if (fn_call.name->identifier->name == "println") {
     for (auto& argument : fn_call.arguments) {
       auto value = operator()(argument);
@@ -249,8 +251,8 @@ calc_result_t InterpreterVisitor::operator()(const BinaryNode& node) {
 
     if constexpr (is_variant_v<std::decay_t<decltype(op)>>) {
       value = std::visit(
-          [](auto&& op) -> std::function<calc_result_t(const calc_result_t&,
-                                                       const calc_result_t&)> {
+          [](auto&& op) -> std::function<calc_result_t(
+                            const calc_result_t&, const calc_result_t&)> {
             return std::decay_t<decltype(op)>::binary_operation;
           },
           op)(value, result);

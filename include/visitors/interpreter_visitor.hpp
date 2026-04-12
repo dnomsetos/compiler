@@ -2,12 +2,15 @@
 #include <unordered_map>
 
 #include <parser/ast.hpp>
+#include <tables/symbol_table.hpp>
 #include <utility/executor.hpp>
 
 const std::size_t without_interrupt = std::numeric_limits<std::size_t>::max();
 
 class InterpreterVisitor {
 public:
+  explicit InterpreterVisitor(const ast::Program& program);
+
   calc_result_t operator()(const ast::IdentifierNode& identifier);
 
   calc_result_t operator()(const ast::LiteralNode& literal);

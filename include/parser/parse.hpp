@@ -6,7 +6,7 @@
 
 #include <parser/ast.hpp>
 #include <scanner/token.hpp>
-#include <utility/ast_allocator.hpp>
+#include <utility/allocator.hpp>
 #include <utility/type_tuple.hpp>
 
 struct UnexpectedToken : tkn::Position {
@@ -51,7 +51,7 @@ using ParseIter = std::deque<tkn::TokenInfo>::const_iterator;
 
 template <typename T>
 using ParseResult = std::expected<
-    std::pair<std::unique_ptr<T, ast::alloc::MonotonicBufferResourceDeleter<T>>,
+    std::pair<std::unique_ptr<T, alloc::MonotonicBufferResourceDeleter<T>>,
               ParseIter>,
     std::variant<UnexpectedToken, TryButCant>>;
 

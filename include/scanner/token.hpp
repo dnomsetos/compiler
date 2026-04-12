@@ -16,8 +16,8 @@ using calc_result_t =
     std::variant<std::int64_t, double, bool, std::string, Dummy>;
 
 inline const std::pair<std::string, calc_result_t> default_value_table[] = {
-    {"int", 0},
-    {"float", 0.0},
+    {"i32", 0},
+    {"f32", 0.0},
     {"bool", false},
     {"str", ""},
 };
@@ -32,8 +32,8 @@ namespace tkn {
 #define GENERATE_BINARY_OPERATION(name, op)                                    \
   struct name {                                                                \
     friend bool operator==(const name& left, const name& right) = default;     \
-    inline static std::function<calc_result_t(const calc_result_t&,            \
-                                              const calc_result_t&)>           \
+    inline static std::function<calc_result_t(                                 \
+        const calc_result_t&, const calc_result_t&)>                           \
         binary_operation = [](auto&& l, auto&& r) -> calc_result_t {           \
       return std::visit(                                                       \
           [](auto&& l, auto&& r) -> calc_result_t {                            \
@@ -54,8 +54,8 @@ namespace tkn {
 #define GENERATE_UNIVERSAL_OPERATION(name, op)                                 \
   struct name {                                                                \
     friend bool operator==(const name& left, const name& right) = default;     \
-    inline static std::function<calc_result_t(const calc_result_t&,            \
-                                              const calc_result_t&)>           \
+    inline static std::function<calc_result_t(                                 \
+        const calc_result_t&, const calc_result_t&)>                           \
         binary_operation = [](const calc_result_t& l,                          \
                               const calc_result_t& r) -> calc_result_t {       \
       return std::visit(                                                       \

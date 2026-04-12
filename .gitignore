@@ -2,3 +2,5 @@ build/
 .cache/
 Testing/
 .clang-format
+.clangd
+include/utility/result*

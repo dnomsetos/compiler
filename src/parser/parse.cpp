@@ -18,7 +18,7 @@ auto parse_left_associative(ParseIter begin,
     return std::unexpected(first_part.error());
   }
 
-  auto result = ast::alloc::make_unique_pmr<Result>(
+  auto result = alloc::make_unique_pmr<Result>(
       std::move(first_part.value().first), begin->position);
   begin = first_part.value().second;
 
@@ -54,7 +54,7 @@ auto parse_left_associative(ParseIter begin,
 auto parse_program(ParseIter begin, ParseIter end)
     -> ParseResult<ast::Program> {
 
-  auto program = ast::alloc::make_unique_pmr<ast::Program>();
+  auto program = alloc::make_unique_pmr<ast::Program>();
 
   for (;;) {
     auto prev_begin = begin;
@@ -170,7 +170,7 @@ auto parse_function_definition(ParseIter begin)
   }
   ++begin;
 
-  auto result = ast::alloc::make_unique_pmr<ast::FunctionDefinitionNode>(
+  auto result = alloc::make_unique_pmr<ast::FunctionDefinitionNode>(
       std::move(identifier.value().first), (begin - 2)->position);
 
   auto parse_list =
@@ -223,7 +223,7 @@ auto parse_variable_definition(ParseIter begin)
   }
   begin = identifier.value().second;
 
-  auto result = ast::alloc::make_unique_pmr<ast::VariableDefinitionNode>(
+  auto result = alloc::make_unique_pmr<ast::VariableDefinitionNode>(
       std::move(identifier.value().first), begin->position);
 
   if (std::holds_alternative<tkn::Colon>(begin->token_variant)) {
@@ -263,7 +263,7 @@ auto parse_loop_interrupt_statment(ParseIter begin) -> ParseResult<Node> {
         UnexpectedToken{begin->position, Token{}, begin->token_variant});
   }
 
-  auto result = ast::alloc::make_unique_pmr<Node>(begin->position);
+  auto result = alloc::make_unique_pmr<Node>(begin->position);
   ++begin;
 
   if constexpr (requires { std::declval<Node>().label; }) {
@@ -330,9 +330,9 @@ auto parse_block_expression(ParseIter begin)
                                              begin->token_variant});
     }
 
-    return std::make_pair(ast::alloc::make_unique_pmr<ast::BlockExpressionNode>(
-                              std::move(result)),
-                          begin + 1);
+    return std::make_pair(
+        alloc::make_unique_pmr<ast::BlockExpressionNode>(std::move(result)),
+        begin + 1);
   }
 
   result.value = std::move(expr.value().first);
@@ -344,7 +344,7 @@ auto parse_block_expression(ParseIter begin)
   }
 
   return std::make_pair(
-      ast::alloc::make_unique_pmr<ast::BlockExpressionNode>(std::move(result)),
+      alloc::make_unique_pmr<ast::BlockExpressionNode>(std::move(result)),
       begin + 1);
 }
 
@@ -376,7 +376,7 @@ auto parse_loop_expression(ParseIter begin)
   }
   ++begin;
 
-  auto result = ast::alloc::make_unique_pmr<ast::LoopExpressionNode>(
+  auto result = alloc::make_unique_pmr<ast::LoopExpressionNode>(
       std::move(label), begin->position);
 
   for (;;) {
@@ -418,7 +418,7 @@ auto parse_if_expression(ParseIter begin)
   }
   begin = block.value().second;
 
-  auto if_expr = ast::alloc::make_unique_pmr<ast::IfExpressionNode>(
+  auto if_expr = alloc::make_unique_pmr<ast::IfExpressionNode>(
       std::move(condition.value().first), std::move(block.value().first),
       begin->position);
 
@@ -429,7 +429,6 @@ auto parse_if_expression(ParseIter begin)
 
   while (std::holds_alternative<tkn::If>(begin->token_variant)) {
     ++begin;
-    auto block_begin = begin;
 
     auto condition = parse_expression(begin);
     if (!condition.has_value()) {
@@ -444,8 +443,7 @@ auto parse_if_expression(ParseIter begin)
     begin = block.value().second;
 
     if_expr->elif_bodies.emplace_back(std::move(condition.value().first),
-                                      std::move(block.value().first),
-                                      block_begin->position);
+                                      std::move(block.value().first));
 
     if (!std::holds_alternative<tkn::Else>(begin->token_variant)) {
       return std::make_pair(std::move(if_expr), begin);
@@ -465,58 +463,19 @@ auto parse_if_expression(ParseIter begin)
 
 auto parse_statement(ParseIter begin) -> ParseResult<ast::StatementNode> {
 
-  auto block_expr = parse_block_expression(begin);
-  if (block_expr.has_value()) {
-    begin = block_expr.value().second;
-    if (std::holds_alternative<tkn::Semicolon>(begin->token_variant)) {
-      ++begin;
-    }
-
-    return std::make_pair(
-        ast::alloc::make_unique_pmr<ast::StatementNode>(
-            std::move(*block_expr.value().first), begin->position),
-        block_expr.value().second);
-  }
-
   auto var_def = parse_variable_definition(begin);
   if (var_def.has_value()) {
     return std::make_pair(
-        ast::alloc::make_unique_pmr<ast::StatementNode>(
+        alloc::make_unique_pmr<ast::StatementNode>(
             std::move(*var_def.value().first), begin->position),
         var_def.value().second);
-  }
-
-  auto if_expr = parse_if_expression(begin);
-  if (if_expr.has_value()) {
-    begin = if_expr.value().second;
-    if (std::holds_alternative<tkn::Semicolon>(begin->token_variant)) {
-      ++begin;
-    }
-
-    return std::make_pair(
-        ast::alloc::make_unique_pmr<ast::StatementNode>(
-            std::move(*if_expr.value().first), begin->position),
-        begin);
-  }
-
-  auto loop_expr = parse_loop_expression(begin);
-  if (loop_expr.has_value()) {
-    begin = loop_expr.value().second;
-    if (std::holds_alternative<tkn::Semicolon>(begin->token_variant)) {
-      ++begin;
-    }
-
-    return std::make_pair(
-        ast::alloc::make_unique_pmr<ast::StatementNode>(
-            std::move(*loop_expr.value().first), begin->position),
-        begin);
   }
 
   auto break_stmt =
       parse_loop_interrupt_statment<ast::BreakStatementNode, tkn::Break>(begin);
   if (break_stmt.has_value()) {
     return std::make_pair(
-        ast::alloc::make_unique_pmr<ast::StatementNode>(
+        alloc::make_unique_pmr<ast::StatementNode>(
             std::move(*break_stmt.value().first), begin->position),
         break_stmt.value().second);
   }
@@ -526,7 +485,7 @@ auto parse_statement(ParseIter begin) -> ParseResult<ast::StatementNode> {
           begin);
   if (continue_stmt.has_value()) {
     return std::make_pair(
-        ast::alloc::make_unique_pmr<ast::StatementNode>(
+        alloc::make_unique_pmr<ast::StatementNode>(
             std::move(*continue_stmt.value().first), begin->position),
         continue_stmt.value().second);
   }
@@ -539,7 +498,7 @@ auto parse_statement(ParseIter begin) -> ParseResult<ast::StatementNode> {
           UnexpectedToken{expr.value().second->position, tkn::Semicolon{},
                           expr.value().second->token_variant});
     }
-    return std::make_pair(ast::alloc::make_unique_pmr<ast::StatementNode>(
+    return std::make_pair(alloc::make_unique_pmr<ast::StatementNode>(
                               std::move(*expr.value().first), begin->position),
                           expr.value().second + 1);
   }
@@ -552,7 +511,7 @@ auto parse_expression(ParseIter begin) -> ParseResult<ast::ExpressionNode> {
   auto block_expr = parse_block_expression(begin);
   if (block_expr.has_value()) {
     return std::make_pair(
-        ast::alloc::make_unique_pmr<ast::ExpressionNode>(
+        alloc::make_unique_pmr<ast::ExpressionNode>(
             std::move(*block_expr.value().first), begin->position),
         block_expr.value().second);
   }
@@ -560,7 +519,7 @@ auto parse_expression(ParseIter begin) -> ParseResult<ast::ExpressionNode> {
   auto if_expr = parse_if_expression(begin);
   if (if_expr.has_value()) {
     return std::make_pair(
-        ast::alloc::make_unique_pmr<ast::ExpressionNode>(
+        alloc::make_unique_pmr<ast::ExpressionNode>(
             std::move(*if_expr.value().first), begin->position),
         if_expr.value().second);
   }
@@ -568,7 +527,7 @@ auto parse_expression(ParseIter begin) -> ParseResult<ast::ExpressionNode> {
   auto loop_expr = parse_loop_expression(begin);
   if (loop_expr.has_value()) {
     return std::make_pair(
-        ast::alloc::make_unique_pmr<ast::ExpressionNode>(
+        alloc::make_unique_pmr<ast::ExpressionNode>(
             std::move(*loop_expr.value().first), begin->position),
         loop_expr.value().second);
   }
@@ -576,7 +535,7 @@ auto parse_expression(ParseIter begin) -> ParseResult<ast::ExpressionNode> {
   auto assignment = parse_assignment(begin);
   if (assignment.has_value()) {
     return std::make_pair(
-        ast::alloc::make_unique_pmr<ast::ExpressionNode>(
+        alloc::make_unique_pmr<ast::ExpressionNode>(
             std::move(*assignment.value().first), begin->position),
         assignment.value().second);
   }
@@ -584,7 +543,7 @@ auto parse_expression(ParseIter begin) -> ParseResult<ast::ExpressionNode> {
   auto or_expr = parse_or(begin);
   if (or_expr.has_value()) {
     return std::make_pair(
-        ast::alloc::make_unique_pmr<ast::ExpressionNode>(
+        alloc::make_unique_pmr<ast::ExpressionNode>(
             std::move(*or_expr.value().first), begin->position),
         or_expr.value().second);
   }
@@ -606,7 +565,7 @@ auto parse_assignment(ParseIter begin) -> ParseResult<ast::AssignmentNode> {
 
     auto expr = parse_expression(begin);
     if (expr.has_value()) {
-      return std::make_pair(ast::alloc::make_unique_pmr<ast::AssignmentNode>(
+      return std::make_pair(alloc::make_unique_pmr<ast::AssignmentNode>(
                                 std::move(identifier.value().first),
                                 std::move(expr.value().first), begin->position),
                             expr.value().second);
@@ -665,10 +624,10 @@ auto parse_unary(ParseIter begin) -> ParseResult<ast::UnaryNode> {
     auto primary = parse_primary(begin + 1);
 
     if (primary.has_value()) {
-      auto unary = ast::alloc::make_unique_pmr<ast::UnaryNode>(
+      auto unary = alloc::make_unique_pmr<ast::UnaryNode>(
           std::move(primary.value().first), begin->position);
 
-      unary->op.emplace(ast::alloc::make_unique_pmr<
+      unary->op.emplace(alloc::make_unique_pmr<
                         type_tuple_to_variant_t<tkn::UnaryOperatorTuple>>(
           std::move(optional_variant.value())));
 
@@ -680,8 +639,8 @@ auto parse_unary(ParseIter begin) -> ParseResult<ast::UnaryNode> {
   auto primary = parse_primary(begin);
   if (primary.has_value()) {
     return std::make_pair(
-        ast::alloc::make_unique_pmr<ast::UnaryNode>(
-            std::move(primary.value().first), begin->position),
+        alloc::make_unique_pmr<ast::UnaryNode>(std::move(primary.value().first),
+                                               begin->position),
         primary.value().second);
   }
   return std::unexpected(TryButCant{begin->position, nterm::Unary{}});
@@ -731,7 +690,7 @@ auto parse_primary(ParseIter begin) -> ParseResult<ast::PrimaryNode> {
 
       if (std::holds_alternative<tkn::RightParent>(current->token_variant)) {
         return std::make_pair(
-            ast::alloc::make_unique_pmr<ast::PrimaryNode>(
+            alloc::make_unique_pmr<ast::PrimaryNode>(
                 std::move(*expr.value().first), begin->position),
             current + 1);
       }
@@ -741,7 +700,7 @@ auto parse_primary(ParseIter begin) -> ParseResult<ast::PrimaryNode> {
   auto literal = parse_literal(begin);
   if (literal.has_value()) {
     return std::make_pair(
-        ast::alloc::make_unique_pmr<ast::PrimaryNode>(
+        alloc::make_unique_pmr<ast::PrimaryNode>(
             std::move(*literal.value().first), begin->position),
         literal.value().second);
   }
@@ -753,7 +712,7 @@ auto parse_primary(ParseIter begin) -> ParseResult<ast::PrimaryNode> {
     if (std::holds_alternative<tkn::LeftParent>(begin->token_variant)) {
       ++begin;
 
-      auto result = ast::alloc::make_unique_pmr<ast::FunctionCallNode>(
+      auto result = alloc::make_unique_pmr<ast::FunctionCallNode>(
           std::move(identifier.value().first), (begin - 2)->position);
 
       auto parse_list =
@@ -780,13 +739,13 @@ auto parse_primary(ParseIter begin) -> ParseResult<ast::PrimaryNode> {
             begin->position, tkn::RightParent{}, begin->token_variant});
       }
 
-      return std::make_pair(ast::alloc::make_unique_pmr<ast::PrimaryNode>(
+      return std::make_pair(alloc::make_unique_pmr<ast::PrimaryNode>(
                                 std::move(*result), start_begin->position),
                             begin + 1);
     }
 
     return std::make_pair(
-        ast::alloc::make_unique_pmr<ast::PrimaryNode>(
+        alloc::make_unique_pmr<ast::PrimaryNode>(
             std::move(*identifier.value().first), start_begin->position),
         begin);
   }
@@ -806,7 +765,7 @@ auto parse_literal(ParseIter begin) -> ParseResult<ast::LiteralNode> {
     }
 
     return std::make_pair(
-        ast::alloc::make_unique_pmr<ast::LiteralNode>(
+        alloc::make_unique_pmr<ast::LiteralNode>(
             std::move(optional_variant.value()), begin->position),
         next);
   }
@@ -819,7 +778,7 @@ auto parse_identifier(ParseIter begin) -> ParseResult<ast::IdentifierNode> {
     auto next = begin + 1;
 
     return std::make_pair(
-        ast::alloc::make_unique_pmr<ast::IdentifierNode>(
+        alloc::make_unique_pmr<ast::IdentifierNode>(
 
             std::get<tkn::Identifier>(begin->token_variant), begin->position),
         next);
