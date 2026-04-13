@@ -2,7 +2,6 @@
 
 #include <parser/ast.hpp>
 #include <tables/symbol_table.hpp>
-#include <utility/result.hpp>
 
 template <ast::InterruptNode TriggerNode> class InterruptTypeChecker {
 public:

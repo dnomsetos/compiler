@@ -21,9 +21,6 @@ TEST(ParserTest, Test1) {
 
   auto result = parse_program(tokens.begin(), tokens.end());
 
-  std::unordered_map<std::string, calc_result_t> variables;
-  auto execute_result = execute_program(*result.value().first, variables);
-
   InterpreterVisitor visitor(*result.value().first);
   auto interpreter_result = visitor(*result.value().first);
 
@@ -77,14 +74,10 @@ TEST(ParserTest, Test3) {
 
   auto result = parse_program(tokens.begin(), tokens.end());
 
-  std::unordered_map<std::string, calc_result_t> variables;
-  auto execute_result = execute_program(*result.value().first, variables);
-
   InterpreterVisitor visitor(*result.value().first);
   auto interpreter_result = visitor(*result.value().first);
 
   ASSERT_TRUE(result.has_value());
-  ASSERT_EQ(std::get<std::int64_t>(execute_result), 2);
   ASSERT_EQ(std::get<std::int64_t>(interpreter_result), 2);
 }
 
