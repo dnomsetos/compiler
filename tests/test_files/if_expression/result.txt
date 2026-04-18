@@ -107,6 +107,36 @@ function definition:
                                           unary: 
                                             primary: 
                                               identifier: x
+        statement: 
+          expression: 
+            logical or: 
+              logical and: 
+                comparison: 
+                  bitwise or: 
+                    bitwise xor: 
+                      bitwise and: 
+                        shift: 
+                          addition: 
+                            multiplication: 
+                              cast: 
+                                unary: 
+                                  primary: 
+                                    call function: println
+                                    with arguments:
+                                      expression: 
+                                        logical or: 
+                                          logical and: 
+                                            comparison: 
+                                              bitwise or: 
+                                                bitwise xor: 
+                                                  bitwise and: 
+                                                    shift: 
+                                                      addition: 
+                                                        multiplication: 
+                                                          cast: 
+                                                            unary: 
+                                                              primary: 
+                                                                identifier: y
         return value: 
           expression: 
             logical or: 
@@ -122,3 +152,39 @@ function definition:
                                 unary: 
                                   primary: 
                                     literal: 42
+    function definition: 
+      name: main
+      argument list is empty
+      return type is void
+      body: 
+        statement: 
+          expression: 
+            logical or: 
+              logical and: 
+                comparison: 
+                  bitwise or: 
+                    bitwise xor: 
+                      bitwise and: 
+                        shift: 
+                          addition: 
+                            multiplication: 
+                              cast: 
+                                unary: 
+                                  primary: 
+                                    call function: test
+                                    with arguments:
+                                      expression: 
+                                        logical or: 
+                                          logical and: 
+                                            comparison: 
+                                              bitwise or: 
+                                                bitwise xor: 
+                                                  bitwise and: 
+                                                    shift: 
+                                                      addition: 
+                                                        multiplication: 
+                                                          cast: 
+                                                            unary: 
+                                                              unary operation: -
+                                                              primary: 
+                                                                literal: 42

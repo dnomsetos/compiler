@@ -146,3 +146,38 @@ variable definition:
                         unary: 
                           primary: 
                             literal: 9
+function definition: 
+  name: main
+  argument list is empty
+  return type is void
+  body: 
+    statement: 
+      expression: 
+        logical or: 
+          logical and: 
+            comparison: 
+              bitwise or: 
+                bitwise xor: 
+                  bitwise and: 
+                    shift: 
+                      addition: 
+                        multiplication: 
+                          cast: 
+                            unary: 
+                              primary: 
+                                call function: println
+                                with arguments:
+                                  expression: 
+                                    logical or: 
+                                      logical and: 
+                                        comparison: 
+                                          bitwise or: 
+                                            bitwise xor: 
+                                              bitwise and: 
+                                                shift: 
+                                                  addition: 
+                                                    multiplication: 
+                                                      cast: 
+                                                        unary: 
+                                                          primary: 
+                                                            identifier: x

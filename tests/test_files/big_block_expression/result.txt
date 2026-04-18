@@ -1,5 +1,5 @@
 function definition: 
-  name: pipeline
+  name: main
   argument list: 
     argument with name a with type i32
     argument with name b with type i32
