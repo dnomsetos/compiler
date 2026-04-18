@@ -4,23 +4,31 @@
 #include <functional>
 #include <ostream>
 #include <stdexcept>
+#include <stdfloat>
 #include <string>
 
 #include <utility/type_tuple.hpp>
+
+#if __STDCPP_FLOAT32_T__ != 1
+namespace std {
+using float32_t = _Float32;
+}
+#endif
+
+#if __STDCPP_FLOAT64_T__ != 1
+namespace std {
+using float64_t = _Float64;
+}
+#endif
 
 struct Dummy {
   friend bool operator==(const Dummy&, const Dummy&) = default;
 };
 
 using calc_result_t =
-    std::variant<std::int64_t, double, bool, std::string, Dummy>;
-
-inline const std::pair<std::string, calc_result_t> default_value_table[] = {
-    {"i32", 0},
-    {"f32", 0.0},
-    {"bool", false},
-    {"str", ""},
-};
+    std::variant<std::int8_t, std::int16_t, std::int32_t, std::int64_t,
+                 std::uint8_t, std::uint16_t, std::uint32_t, std::uint64_t,
+                 std::float32_t, std::float64_t, bool, char, Dummy>;
 
 namespace tkn {
 
@@ -37,7 +45,9 @@ namespace tkn {
         binary_operation = [](auto&& l, auto&& r) -> calc_result_t {           \
       return std::visit(                                                       \
           [](auto&& l, auto&& r) -> calc_result_t {                            \
-            if constexpr (requires { l op r; }) {                              \
+            if constexpr (std::is_same_v<std::decay_t<decltype(l)>,            \
+                                         std::decay_t<decltype(r)>> &&         \
+                          requires { l op r; }) {                              \
               return l op r;                                                   \
             } else {                                                           \
               throw std::runtime_error("invalid arguments");                   \
@@ -60,7 +70,9 @@ namespace tkn {
                               const calc_result_t& r) -> calc_result_t {       \
       return std::visit(                                                       \
           [](auto&& l, auto&& r) -> calc_result_t {                            \
-            if constexpr (requires { l op r; }) {                              \
+            if constexpr (std::is_same_v<std::decay_t<decltype(l)>,            \
+                                         std::decay_t<decltype(r)>> &&         \
+                          requires { l op r; }) {                              \
               return l op r;                                                   \
             } else {                                                           \
               throw std::runtime_error("invalid arguments");                   \
@@ -107,8 +119,10 @@ namespace tkn {
     return os;                                                                 \
   }
 
-GENERATE_UNIVERSAL_OPERATION(Plus, +)
 GENERATE_UNIVERSAL_OPERATION(Minus, -)
+GENERATE_BINARY_OPERATION(LogicalAnd, &&)
+GENERATE_BINARY_OPERATION(Plus, +)
+GENERATE_BINARY_OPERATION(LogicalOr, ||)
 GENERATE_BINARY_OPERATION(Multiply, *)
 GENERATE_BINARY_OPERATION(Divide, /)
 GENERATE_BINARY_OPERATION(Mod, %)
@@ -119,12 +133,14 @@ GENERATE_BINARY_OPERATION(Greater, >)
 GENERATE_BINARY_OPERATION(LessEqual, <=)
 GENERATE_BINARY_OPERATION(GreaterEqual, >=)
 GENERATE_BINARY_OPERATION(Assignment, =)
-GENERATE_BINARY_OPERATION(And, &)
-GENERATE_BINARY_OPERATION(Or, |)
-GENERATE_BINARY_OPERATION(Xor, ^)
+GENERATE_BINARY_OPERATION(BitwiseAnd, &)
+GENERATE_BINARY_OPERATION(BitwiseOr, |)
+GENERATE_BINARY_OPERATION(BitwiseXor, ^)
+GENERATE_BINARY_OPERATION(LeftShift, <<)
+GENERATE_BINARY_OPERATION(RightShift, >>)
 GENERATE_UNARY_OPERATION(Not, !)
 GENERATE_EMPTY_TOKEN(Fn)
-GENERATE_EMPTY_TOKEN(Var)
+GENERATE_EMPTY_TOKEN(Let)
 GENERATE_EMPTY_TOKEN(Break)
 GENERATE_EMPTY_TOKEN(Continue)
 GENERATE_EMPTY_TOKEN(Return)
@@ -136,6 +152,7 @@ GENERATE_EMPTY_TOKEN(Else)
 GENERATE_EMPTY_TOKEN(Loop)
 GENERATE_EMPTY_TOKEN(True)
 GENERATE_EMPTY_TOKEN(False)
+GENERATE_EMPTY_TOKEN(As)
 GENERATE_EMPTY_TOKEN(LeftBrace)
 GENERATE_EMPTY_TOKEN(RightBrace)
 GENERATE_EMPTY_TOKEN(LeftParent)
@@ -197,34 +214,35 @@ struct BoolLiteral {
 };
 
 using LiteralTuple = TypeTuple<CharLiteral, IntLiteral, FloatLiteral,
-                               StringLiteral, BoolLiteral>;
+                               BoolLiteral, StringLiteral>;
 
-using UnaryOperatorTuple = TypeTuple<Plus, Minus, Not>;
+using UnaryOperatorTuple = TypeTuple<Minus, Not>;
 
-using LogicalOperatorTuple = TypeTuple<And, Or, Xor, Not>;
+using LogicalOperatorTuple = TypeTuple<LogicalAnd, LogicalOr, Not>;
 
 using HighPriorityArithmeticOperatorTuple = TypeTuple<Multiply, Divide, Mod>;
 
 using LowPriorityArithmeticOperatorTuple = TypeTuple<Plus, Minus>;
 
 using ComparisonOperatorTuple =
-    TypeTuple<Less, Greater, LessEqual, GreaterEqual>;
+    TypeTuple<Less, Greater, LessEqual, GreaterEqual, Equal, NotEqual>;
 
-using EqualityOperatorTuple = TypeTuple<Equal, NotEqual>;
+using BitwiseOperatorTuple = TypeTuple<BitwiseAnd, BitwiseOr, BitwiseXor>;
+
+using ShiftOperatorTuple = TypeTuple<LeftShift, RightShift>;
 
 using HelperTuple = TypeTuple<Arrow, Semicolon, Colon, Comma, LeftBrace,
                               RightBrace, LeftParent, RightParent, EOFToken>;
 
-using KeywordsTuple = TypeTuple<Fn, Var, If, Else, Loop, True, False>;
+using KeywordsTuple = TypeTuple<Fn, Let, If, Else, Loop, True, False>;
 
 using InterruptTuple = TypeTuple<Break, Continue, Return>;
 
-using TokenTuple =
-    Concat<LiteralTuple, LogicalOperatorTuple,
-           HighPriorityArithmeticOperatorTuple,
-           LowPriorityArithmeticOperatorTuple, EqualityOperatorTuple,
-           ComparisonOperatorTuple, HelperTuple, KeywordsTuple, InterruptTuple,
-           TypeTuple<Identifier, Assignment, Label>>::type;
+using TokenTuple = Concat<
+    LiteralTuple, LogicalOperatorTuple, HighPriorityArithmeticOperatorTuple,
+    LowPriorityArithmeticOperatorTuple, ComparisonOperatorTuple, HelperTuple,
+    KeywordsTuple, InterruptTuple, BitwiseOperatorTuple, ShiftOperatorTuple,
+    TypeTuple<Identifier, Assignment, Label, As>>::type;
 
 struct Point {
   std::size_t line;
@@ -242,6 +260,8 @@ struct Position {
 
   Position(Point start, Point end)
       : start{start}, size(end.offset - start.offset) {}
+
+  Position(Point start, std::size_t size) : start(start), size(size) {}
 
   friend bool operator==(const Position& left, const Position& right) = default;
 };

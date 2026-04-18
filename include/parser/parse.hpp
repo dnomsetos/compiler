@@ -31,9 +31,10 @@ GENERATE_NTERM(Assignment)
 GENERATE_NTERM(Unary)
 GENERATE_NTERM(Primary)
 GENERATE_NTERM(Literal)
+GENERATE_NTERM(Cast)
 
 using NtermTuple = TypeTuple<Definition, Statement, Expression, Assignment,
-                             Unary, Primary, Literal>;
+                             Unary, Primary, Literal, Cast>;
 
 using NtermVariant = type_tuple_to_variant_t<NtermTuple>;
 
@@ -82,21 +83,32 @@ auto parse_expression(ParseIter begin) -> ParseResult<ast::ExpressionNode>;
 
 auto parse_assignment(ParseIter begin) -> ParseResult<ast::AssignmentNode>;
 
-inline auto parse_or(ParseIter begin) -> ParseResult<ast::OrNode>;
+inline auto parse_logical_or(ParseIter begin)
+    -> ParseResult<ast::LogicalOrNode>;
 
-inline auto parse_xor(ParseIter begin) -> ParseResult<ast::XorNode>;
-
-inline auto parse_and(ParseIter begin) -> ParseResult<ast::AndNode>;
-
-inline auto parse_equality(ParseIter begin) -> ParseResult<ast::EqualityNode>;
+inline auto parse_logical_and(ParseIter begin)
+    -> ParseResult<ast::LogicalAndNode>;
 
 inline auto parse_comparison(ParseIter begin)
     -> ParseResult<ast::ComparisonNode>;
+
+inline auto parse_bitwise_or(ParseIter begin)
+    -> ParseResult<ast::BitwiseOrNode>;
+
+inline auto parse_bitwise_xor(ParseIter begin)
+    -> ParseResult<ast::BitwiseXorNode>;
+
+inline auto parse_bitwise_and(ParseIter begin)
+    -> ParseResult<ast::BitwiseAndNode>;
+
+inline auto parse_shift(ParseIter begin) -> ParseResult<ast::ShiftNode>;
 
 inline auto parse_addition(ParseIter begin) -> ParseResult<ast::AdditionNode>;
 
 inline auto parse_multiplication(ParseIter begin)
     -> ParseResult<ast::MultiplicationNode>;
+
+inline auto parse_cast(ParseIter begin) -> ParseResult<ast::CastNode>;
 
 auto parse_unary(ParseIter begin) -> ParseResult<ast::UnaryNode>;
 

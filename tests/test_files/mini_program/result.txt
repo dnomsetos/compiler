@@ -1,0 +1,206 @@
+function definition: 
+  name: complex
+  argument list: 
+    argument with name a with type i32
+    argument with name b with type i32
+  return type: u64
+  body: 
+    statement: 
+      variable definition: 
+        name: sum
+        value: 
+        expression: 
+          logical or: 
+            logical and: 
+              comparison: 
+                bitwise or: 
+                  bitwise xor: 
+                    bitwise and: 
+                      shift: 
+                        addition: 
+                          multiplication: 
+                            cast: 
+                              unary: 
+                                primary: 
+                                  expression: 
+                                    logical or: 
+                                      logical and: 
+                                        comparison: 
+                                          bitwise or: 
+                                            bitwise xor: 
+                                              bitwise and: 
+                                                shift: 
+                                                  addition: 
+                                                    multiplication: 
+                                                      cast: 
+                                                        unary: 
+                                                          primary: 
+                                                            identifier: a
+                                                    binary operation: +
+                                                    multiplication: 
+                                                      cast: 
+                                                        unary: 
+                                                          primary: 
+                                                            identifier: b
+                              to type: 
+                                identifier: u64
+    statement: 
+      variable definition: 
+        name: scaled
+        value: 
+        expression: 
+          logical or: 
+            logical and: 
+              comparison: 
+                bitwise or: 
+                  bitwise xor: 
+                    bitwise and: 
+                      shift: 
+                        addition: 
+                          multiplication: 
+                            cast: 
+                              unary: 
+                                primary: 
+                                  identifier: sum
+                            binary operation: *
+                            cast: 
+                              unary: 
+                                primary: 
+                                  expression: 
+                                    logical or: 
+                                      logical and: 
+                                        comparison: 
+                                          bitwise or: 
+                                            bitwise xor: 
+                                              bitwise and: 
+                                                shift: 
+                                                  addition: 
+                                                    multiplication: 
+                                                      cast: 
+                                                        unary: 
+                                                          primary: 
+                                                            identifier: b
+                                                        to type: 
+                                                          identifier: u64
+    statement: 
+      if expression: 
+        if condition: 
+          expression: 
+            logical or: 
+              logical and: 
+                comparison: 
+                  bitwise or: 
+                    bitwise xor: 
+                      bitwise and: 
+                        shift: 
+                          addition: 
+                            multiplication: 
+                              cast: 
+                                unary: 
+                                  primary: 
+                                    identifier: scaled
+                  binary operation: >
+                  bitwise or: 
+                    bitwise xor: 
+                      bitwise and: 
+                        shift: 
+                          addition: 
+                            multiplication: 
+                              cast: 
+                                unary: 
+                                  primary: 
+                                    literal: 100
+                                to type: 
+                                  identifier: u64
+        if body: 
+          block expression: 
+            statement: 
+              expression: 
+                assignment: 
+                  identifier: scaled
+                  assigned value: 
+                    expression: 
+                      logical or: 
+                        logical and: 
+                          comparison: 
+                            bitwise or: 
+                              bitwise xor: 
+                                bitwise and: 
+                                  shift: 
+                                    addition: 
+                                      multiplication: 
+                                        cast: 
+                                          unary: 
+                                            primary: 
+                                              literal: 100
+                                          to type: 
+                                            identifier: u64
+        else body: 
+          block expression: 
+            block value: 
+              expression: 
+                loop:
+                  statement: 
+                    variable definition: 
+                      name: tmp
+                      value: 
+                      expression: 
+                        logical or: 
+                          logical and: 
+                            comparison: 
+                              bitwise or: 
+                                bitwise xor: 
+                                  bitwise and: 
+                                    shift: 
+                                      addition: 
+                                        multiplication: 
+                                          cast: 
+                                            unary: 
+                                              primary: 
+                                                expression: 
+                                                  logical or: 
+                                                    logical and: 
+                                                      comparison: 
+                                                        bitwise or: 
+                                                          bitwise xor: 
+                                                            bitwise and: 
+                                                              shift: 
+                                                                addition: 
+                                                                  multiplication: 
+                                                                    cast: 
+                                                                      unary: 
+                                                                        primary: 
+                                                                          identifier: scaled
+                                                                      to type: 
+                                                                        identifier: i64
+                                        binary operation: -
+                                        multiplication: 
+                                          cast: 
+                                            unary: 
+                                              primary: 
+                                                literal: 1
+                  statement: 
+                    break statement
+      return value: 
+        expression: 
+          logical or: 
+            logical and: 
+              comparison: 
+                bitwise or: 
+                  bitwise xor: 
+                    bitwise and: 
+                      shift: 
+                        addition: 
+                          multiplication: 
+                            cast: 
+                              unary: 
+                                primary: 
+                                  identifier: sum
+                          binary operation: +
+                          multiplication: 
+                            cast: 
+                              unary: 
+                                primary: 
+                                  identifier: scaled
+                              to type: 
+                                identifier: u64

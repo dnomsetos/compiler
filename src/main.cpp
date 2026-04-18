@@ -4,16 +4,17 @@
 
 #include <parser/parse.hpp>
 #include <scanner/tokenize.hpp>
-#include <utility/executor.hpp>
-#include <visitors/interpreter_visitor.hpp>
-#include <visitors/print_visitor.hpp>
+#include <semantic_analysis/semantic_visitor.hpp>
+#include <testing_utilities/interpreter_visitor.hpp>
+#include <testing_utilities/print_visitor.hpp>
+#include <utility/output.hpp>
 
 const int number_of_required_args = 3;
 
 const std::string help_mode = "--help";
 const std::string print_ast_mode = "--print_ast";
 const std::string interpret_mode = "--interpret";
-const std::string execute_mode = "--execute";
+const std::string semantic_mode = "--semantic";
 
 const char* skip_empty_arg = "--skip_empty";
 const char* out_file_arg = "--file";
@@ -45,15 +46,21 @@ void interpret(const std::string& code) {
     return;
   }
 
-  InterpreterVisitor visitor;
-  auto result = visitor(*ast.value().first);
+  TypeStore type_store;
+  GlobalSymbolTable global_symbol_table{type_store};
+
+  SemanticVisitor visitor(type_store, global_symbol_table);
+  visitor.visit(*ast.value().first);
+
+  InterpreterVisitor interpreter(type_store);
+  auto result = interpreter(*ast.value().first, "main");
 
   std::cout << "Returned from main: ";
   std::visit([](auto&& value) { std::cout << value << '\n'; }, result);
 }
 
-void execute(const std::string& code) {
-  std::cout << "Executing\n";
+void semantic(const std::string& code) {
+  std::cout << "Semantic analysis\n";
 
   auto tokens = tokenize(code);
   auto ast = parse_program(tokens.begin(), tokens.end());
@@ -63,11 +70,11 @@ void execute(const std::string& code) {
     return;
   }
 
-  std::unordered_map<std::string, calc_result_t> variables;
-  auto result = execute_program(*ast.value().first, variables);
+  TypeStore type_store;
+  GlobalSymbolTable global_symbol_table{type_store};
 
-  std::cout << "Returned from main: ";
-  std::visit([](auto&& value) { std::cout << value << '\n'; }, result);
+  SemanticVisitor visitor(type_store, global_symbol_table);
+  visitor.visit(*ast.value().first);
 }
 
 void print_help() {
@@ -75,7 +82,6 @@ void print_help() {
   std::cout << "  compiler " << print_ast_mode << " <file> [" << out_file_arg
             << " <file>] [" << skip_empty_arg << " <true|false>]\n";
   std::cout << "  compiler " << interpret_mode << " <file>\n";
-  std::cout << "  compiler " << execute_mode << " <file>\n";
 }
 
 int main(int argc, char** argv) {
@@ -95,8 +101,8 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  std::string code((std::istreambuf_iterator<char>(in)),
-                   (std::istreambuf_iterator<char>()));
+  std::string code(
+      (std::istreambuf_iterator<char>(in)), (std::istreambuf_iterator<char>()));
 
   for (int i = number_of_required_args; i < argc; ++i) {
     if (std::strcmp(argv[i], out_file_arg) == 0 && i + 1 < argc) {
@@ -120,8 +126,10 @@ int main(int argc, char** argv) {
     }
   } else if (mode == interpret_mode) {
     interpret(code);
-  } else if (mode == execute_mode) {
-    execute(code);
+  } else if (mode == semantic_mode) {
+    semantic(code);
+  } else if (mode == print_ast_mode) {
+    print_ast(code, std::cout, skip_empty);
   } else {
     std::cerr << "Unknown mode\n";
     return 1;

@@ -1,0 +1,7 @@
+fn add(a: i64, b: f64) -> f64 {
+    42.42
+}
+
+fn compute(a: i32, b: f32) -> f32 {
+    add(a as i64, b as f64) as f32
+}

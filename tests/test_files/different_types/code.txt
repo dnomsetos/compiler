@@ -1,0 +1,22 @@
+let a : i8 = 1;
+let b : i16 = 2;
+let c : i32 = 3;
+let d : i64 = 4;
+let e : u8 = 5;
+let f : u16 = 6;
+let g : u32 = 7;
+let h : u64 = 8;
+let i : f32 = 9.0;
+let j : f64 = 10.0;
+let k : bool = true;
+let l : char = 'a';
+
+fn aboba(a: i32, b: bool, c: u64, d: char) -> u8 {
+  println(42);
+  a as u8 + c as u8
+}
+
+fn main() {
+  aboba(1, true, 2, 'a');
+}
+

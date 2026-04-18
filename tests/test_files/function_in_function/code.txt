@@ -1,0 +1,8 @@
+fn outer() {
+    fn inner() {
+        let x = 42;
+        println(x);
+    }
+
+    inner();
+}
