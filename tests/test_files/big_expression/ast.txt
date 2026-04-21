@@ -165,7 +165,7 @@ function definition:
                           cast: 
                             unary: 
                               primary: 
-                                call function: println
+                                call function: print_i32
                                 with arguments:
                                   expression: 
                                     logical or: 

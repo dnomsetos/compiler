@@ -17,28 +17,28 @@ bool SymbolTable::insert_function(const std::string& name, Symbol&& symbol) {
 
 auto SymbolTable::get_variable_symbol(const std::string& name) const
     -> const Symbol* {
-  try {
+  if (variable_symbols_.contains(name)) {
     return &variable_symbols_.at(name);
-  } catch (const std::out_of_range&) {
-    if (parent_ == nullptr) {
-      throw std::runtime_error("variable " + name + " is not defined");
-    }
-
-    return parent_->get_variable_symbol(name);
   }
+
+  if (parent_ == nullptr) {
+    throw std::runtime_error("variable " + name + " is not defined");
+  }
+
+  return parent_->get_variable_symbol(name);
 }
 
 auto SymbolTable::get_function_symbol(const std::string& name) const
     -> const Symbol* {
-  try {
+  if (function_symbols_.contains(name)) {
     return &function_symbols_.at(name);
-  } catch (const std::out_of_range&) {
-    if (parent_ == nullptr) {
-      throw std::runtime_error("function " + name + " is not defined");
-    }
-
-    return parent_->get_function_symbol(name);
   }
+
+  if (parent_ == nullptr) {
+    throw std::runtime_error("function " + name + " is not defined");
+  }
+
+  return parent_->get_function_symbol(name);
 }
 
 auto SymbolTable::get_variable_symbol_in_position(
@@ -65,6 +65,18 @@ auto SymbolTable::get_function_symbol_in_position(
                              std::to_string(position.start.line));
   }
   return result;
+}
+
+bool SymbolTable::check_variable_availability(const std::string& name) const {
+  return variable_symbols_.contains(name) ||
+         (parent_ == nullptr ? false
+                             : parent_->check_variable_availability(name));
+}
+
+bool SymbolTable::check_function_availability(const std::string& name) const {
+  return function_symbols_.contains(name) ||
+         (parent_ == nullptr ? false
+                             : parent_->check_function_availability(name));
 }
 
 const SymbolTable* SymbolTable::get_parent() const { return parent_; }
@@ -144,15 +156,29 @@ SymbolTable* SymbolTable::find_loop_by_label(const std::string& label) {
 }
 
 GlobalSymbolTable::GlobalSymbolTable(TypeStore& type_store) : root_{} {
-  Symbol symbol{
-      .position = tkn::Position{0, 0, 0},
-      .type = type_store.new_function(type_store.new_basic_type(tp::Void{}),
-                                      {type_store.new_basic_type(tp::I32{})}),
-      .scope = &root_,
-      .definition = nullptr,
-  };
+  auto add_symbol = [&]<typename T>(const std::string& name) {
+    Symbol symbol{
+        .position = tkn::Position{0, 0, 0},
+        .type = type_store.new_function(type_store.new_basic_type(tp::Void{}),
+                                        {type_store.new_basic_type(T{})}),
 
-  root_.insert_function("println", std::move(symbol));
+        .scope = &root_,
+        .definition = nullptr};
+    root_.insert_function(name, std::move(symbol));
+  };
+  add_symbol.template operator()<tp::I8>("print_i8");
+  add_symbol.template operator()<tp::I16>("print_i16");
+  add_symbol.template operator()<tp::I32>("print_i32");
+  add_symbol.template operator()<tp::I64>("print_i64");
+  add_symbol.template operator()<tp::U8>("print_u8");
+  add_symbol.template operator()<tp::U16>("print_u16");
+  add_symbol.template operator()<tp::U32>("print_u32");
+  add_symbol.template operator()<tp::U64>("print_u64");
+  add_symbol.template operator()<tp::F32>("print_f32");
+  add_symbol.template operator()<tp::F64>("print_f64");
+  add_symbol.template operator()<tp::Char>("print_char");
+  add_symbol.template operator()<tp::Bool>("print_bool");
+  add_symbol.template operator()<tp::Void>("print_void");
 }
 
 SymbolTable* GlobalSymbolTable::get_root() { return &root_; }

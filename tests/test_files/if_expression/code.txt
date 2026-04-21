@@ -1,4 +1,4 @@
-fn test(a: i32) -> i32 {
+fn test(a: i32) -> u32 {
     let y = if a > 0 {
         let x = a;
         x
@@ -6,10 +6,10 @@ fn test(a: i32) -> i32 {
         let x = -a;
         x
     };
-    println(y);
-    42
+    print_i32(y - 43);
+    y as u32
 }
 
 fn main() {
-    test(-42);
+    print_u64(test(-42) as u64);
 }

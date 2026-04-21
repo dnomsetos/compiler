@@ -1,6 +1,6 @@
 variable definition: 
   name: x
-  type: i32
+  type: i64
 function definition: 
   name: main
   argument list is empty
@@ -50,7 +50,7 @@ function definition:
                           cast: 
                             unary: 
                               primary: 
-                                call function: println
+                                call function: print_i64
                                 with arguments:
                                   expression: 
                                     logical or: 
@@ -66,17 +66,3 @@ function definition:
                                                         unary: 
                                                           primary: 
                                                             identifier: x
-                                  expression: 
-                                    logical or: 
-                                      logical and: 
-                                        comparison: 
-                                          bitwise or: 
-                                            bitwise xor: 
-                                              bitwise and: 
-                                                shift: 
-                                                  addition: 
-                                                    multiplication: 
-                                                      cast: 
-                                                        unary: 
-                                                          primary: 
-                                                            literal: 42

@@ -185,7 +185,7 @@ public:
 
 struct IntLiteral {
 public:
-  std::uint64_t value;
+  std::int64_t value;
 
   friend bool operator==(const IntLiteral& left,
                          const IntLiteral& right) = default;
@@ -265,6 +265,10 @@ struct Position {
 
   friend bool operator==(const Position& left, const Position& right) = default;
 };
+
+inline std::ostream& operator<<(std::ostream& os, const Position& position) {
+  return os << position.start.line << ":" << position.start.offset << ":";
+}
 
 template <typename T>
 concept Token = IsInTypeTuple<T, TokenTuple>::value;

@@ -1,8 +1,8 @@
 function definition: 
-  name: classify
+  name: func
   argument list: 
-    argument with name x with type u8
-  return type: u8
+    argument with name x with type u64
+  return type: u64
   body: 
     statement: 
       if expression: 
@@ -236,6 +236,36 @@ function definition:
                                             unary: 
                                               primary: 
                                                 literal: 1
+                  statement: 
+                    expression: 
+                      logical or: 
+                        logical and: 
+                          comparison: 
+                            bitwise or: 
+                              bitwise xor: 
+                                bitwise and: 
+                                  shift: 
+                                    addition: 
+                                      multiplication: 
+                                        cast: 
+                                          unary: 
+                                            primary: 
+                                              call function: print_u64
+                                              with arguments:
+                                                expression: 
+                                                  logical or: 
+                                                    logical and: 
+                                                      comparison: 
+                                                        bitwise or: 
+                                                          bitwise xor: 
+                                                            bitwise and: 
+                                                              shift: 
+                                                                addition: 
+                                                                  multiplication: 
+                                                                    cast: 
+                                                                      unary: 
+                                                                        primary: 
+                                                                          identifier: c
                   block value: 
                     expression: 
                       logical or: 
@@ -251,3 +281,55 @@ function definition:
                                           unary: 
                                             primary: 
                                               identifier: c
+      function definition: 
+        name: main
+        argument list is empty
+        return type is void
+        body: 
+          statement: 
+            expression: 
+              logical or: 
+                logical and: 
+                  comparison: 
+                    bitwise or: 
+                      bitwise xor: 
+                        bitwise and: 
+                          shift: 
+                            addition: 
+                              multiplication: 
+                                cast: 
+                                  unary: 
+                                    primary: 
+                                      call function: print_i32
+                                      with arguments:
+                                        expression: 
+                                          logical or: 
+                                            logical and: 
+                                              comparison: 
+                                                bitwise or: 
+                                                  bitwise xor: 
+                                                    bitwise and: 
+                                                      shift: 
+                                                        addition: 
+                                                          multiplication: 
+                                                            cast: 
+                                                              unary: 
+                                                                primary: 
+                                                                  call function: func
+                                                                  with arguments:
+                                                                    expression: 
+                                                                      logical or: 
+                                                                        logical and: 
+                                                                          comparison: 
+                                                                            bitwise or: 
+                                                                              bitwise xor: 
+                                                                                bitwise and: 
+                                                                                  shift: 
+                                                                                    addition: 
+                                                                                      multiplication: 
+                                                                                        cast: 
+                                                                                          unary: 
+                                                                                            primary: 
+                                                                                              literal: 42
+                                                              to type: 
+                                                                identifier: i32

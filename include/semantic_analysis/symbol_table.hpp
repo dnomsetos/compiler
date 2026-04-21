@@ -60,6 +60,10 @@ public:
                                        const tkn::Position& position) const
       -> const Symbol*;
 
+  bool check_variable_availability(const std::string& name) const;
+
+  bool check_function_availability(const std::string& name) const;
+
   const SymbolTable* get_parent() const;
 
   ScopeVariant& get_scope();
@@ -79,7 +83,7 @@ public:
 
   SymbolTable* find_loop_by_label(const std::string& label);
 
-private:
+  // private:
   std::size_t index_;
   SymbolTable* parent_ = nullptr;
   std::pmr::vector<alloc::pmr_unique_ptr<SymbolTable>> children_{&alloc::mr};

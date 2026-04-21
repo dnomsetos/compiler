@@ -1,5 +1,6 @@
 #include <cstring>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 
 #include <parser/parse.hpp>
@@ -56,7 +57,13 @@ void interpret(const std::string& code) {
   auto result = interpreter(*ast.value().first, "main");
 
   std::cout << "Returned from main: ";
-  std::visit([](auto&& value) { std::cout << value << '\n'; }, result);
+  std::visit(
+      [](auto&& value) {
+        if constexpr (requires { std::cout << value << '\n'; }) {
+          std::cout << value << '\n';
+        }
+      },
+      result);
 }
 
 void semantic(const std::string& code) {
@@ -89,6 +96,8 @@ int main(int argc, char** argv) {
     print_help();
     return 1;
   }
+
+  std::cout << std::fixed << std::setprecision(10);
 
   std::string mode = argv[1];
   std::string input_file = argv[2];

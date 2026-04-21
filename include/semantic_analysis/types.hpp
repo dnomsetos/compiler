@@ -41,8 +41,25 @@ GENERATE_TYPE(F64, std::float64_t)
 GENERATE_TYPE(Bool, bool)
 GENERATE_TYPE(Char, char)
 GENERATE_TYPE(Void, Dummy)
-GENERATE_TYPE(IntLiteral, std::uint64_t);
-GENERATE_TYPE(FloatLiteral, std::float64_t);
+
+struct IntLiteral {
+  std::int64_t value;
+  TypeId parent = no_type_id;
+};
+
+inline std::ostream& operator<<(std::ostream& out, const IntLiteral& literal) {
+  return out << "Integer literal with value " << literal.value;
+}
+
+struct FloatLiteral {
+  std::float64_t value;
+  TypeId parent = no_type_id;
+};
+
+inline std::ostream& operator<<(std::ostream& out,
+                                const FloatLiteral& literal) {
+  return out << "Float literal with value " << literal.value;
+}
 
 using LiteralTypeTuple = TypeTuple<IntLiteral, FloatLiteral>;
 
@@ -60,6 +77,9 @@ using CharTypeTuple = TypeTuple<Char>;
 using FloatingPointTypeTuple = TypeTuple<F32, F64>;
 
 using VoidTypeTuple = TypeTuple<Void>;
+
+using NumericTypeTuple =
+    type_tuple_concat_t<IntegerTypeTuple, FloatingPointTypeTuple>;
 
 using BasicTypeTypeTuple =
     type_tuple_concat_t<IntegerTypeTuple, BooleanTypeTuple, CharTypeTuple,
@@ -80,6 +100,8 @@ inline std::ostream& operator<<(std::ostream& out, const VariableType&) {
 struct Function {
   std::vector<TypeId> args;
   TypeId return_type;
+
+  bool operator==(const Function& other) const = default;
 };
 
 inline std::ostream& operator<<(std::ostream& out, const Function&) {

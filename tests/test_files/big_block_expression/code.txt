@@ -1,4 +1,4 @@
-fn main(a: i32, b: i32) -> i32 {
+fn helper(a: i32, b: i32) -> i32 {
     let result = {
         let x = a + b;
 
@@ -26,4 +26,8 @@ fn main(a: i32, b: i32) -> i32 {
     };
 
     result
+}
+
+fn main() {
+    print_u64(helper(146, 67) as u64);
 }

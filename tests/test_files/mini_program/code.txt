@@ -1,4 +1,4 @@
-fn main(a: i32, b: i32) -> u64 {
+fn func(a: i32, b: i32) -> u64 {
     let sum = (a + b) as u64;
     let scaled = sum * (b as u64);
 
@@ -12,4 +12,8 @@ fn main(a: i32, b: i32) -> u64 {
     }
 
     sum + scaled as u64
+}
+
+fn main() {
+    print_u64(func(42, 239));
 }

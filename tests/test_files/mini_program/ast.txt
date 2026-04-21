@@ -1,5 +1,5 @@
 function definition: 
-  name: main
+  name: func
   argument list: 
     argument with name a with type i32
     argument with name b with type i32
@@ -204,3 +204,67 @@ function definition:
                                   identifier: scaled
                               to type: 
                                 identifier: u64
+  function definition: 
+    name: main
+    argument list is empty
+    return type is void
+    body: 
+      statement: 
+        expression: 
+          logical or: 
+            logical and: 
+              comparison: 
+                bitwise or: 
+                  bitwise xor: 
+                    bitwise and: 
+                      shift: 
+                        addition: 
+                          multiplication: 
+                            cast: 
+                              unary: 
+                                primary: 
+                                  call function: print_u64
+                                  with arguments:
+                                    expression: 
+                                      logical or: 
+                                        logical and: 
+                                          comparison: 
+                                            bitwise or: 
+                                              bitwise xor: 
+                                                bitwise and: 
+                                                  shift: 
+                                                    addition: 
+                                                      multiplication: 
+                                                        cast: 
+                                                          unary: 
+                                                            primary: 
+                                                              call function: func
+                                                              with arguments:
+                                                                expression: 
+                                                                  logical or: 
+                                                                    logical and: 
+                                                                      comparison: 
+                                                                        bitwise or: 
+                                                                          bitwise xor: 
+                                                                            bitwise and: 
+                                                                              shift: 
+                                                                                addition: 
+                                                                                  multiplication: 
+                                                                                    cast: 
+                                                                                      unary: 
+                                                                                        primary: 
+                                                                                          literal: 42
+                                                                expression: 
+                                                                  logical or: 
+                                                                    logical and: 
+                                                                      comparison: 
+                                                                        bitwise or: 
+                                                                          bitwise xor: 
+                                                                            bitwise and: 
+                                                                              shift: 
+                                                                                addition: 
+                                                                                  multiplication: 
+                                                                                    cast: 
+                                                                                      unary: 
+                                                                                        primary: 
+                                                                                          literal: 239

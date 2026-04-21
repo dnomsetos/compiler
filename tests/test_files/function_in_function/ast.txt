@@ -41,7 +41,7 @@ function definition:
                                 cast: 
                                   unary: 
                                     primary: 
-                                      call function: println
+                                      call function: print_i32
                                       with arguments:
                                         expression: 
                                           logical or: 
@@ -72,4 +72,25 @@ function definition:
                             unary: 
                               primary: 
                                 call function: inner
+                                with arguments:
+function definition: 
+  name: main
+  argument list is empty
+  return type is void
+  body: 
+    statement: 
+      expression: 
+        logical or: 
+          logical and: 
+            comparison: 
+              bitwise or: 
+                bitwise xor: 
+                  bitwise and: 
+                    shift: 
+                      addition: 
+                        multiplication: 
+                          cast: 
+                            unary: 
+                              primary: 
+                                call function: outer
                                 with arguments:

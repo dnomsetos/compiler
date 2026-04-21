@@ -1,8 +1,11 @@
 fn outer() {
-    fn inner() {
-        let x = 42;
-        println(x);
-    }
+  fn inner() {
+    let x = 42;
+    print_i32(x);
+  }
 
-    inner();
+  inner();
+}
+fn main() {
+  outer();
 }

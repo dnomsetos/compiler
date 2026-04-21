@@ -12,11 +12,12 @@ let k : bool = true;
 let l : char = 'a';
 
 fn aboba(a: i32, b: bool, c: u64, d: char) -> u8 {
-  println(42);
+  print_u8(42);
   a as u8 + c as u8
 }
 
 fn main() {
-  aboba(1, true, 2, 'a');
+  print_char('c');
+  print_u16(aboba(1, true, 2, 'a') as u16);
 }
 

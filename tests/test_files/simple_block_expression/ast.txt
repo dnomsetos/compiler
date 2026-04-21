@@ -148,3 +148,69 @@ function definition:
                                   unary: 
                                     primary: 
                                       identifier: result
+      function definition: 
+        name: main
+        argument list is empty
+        return type is void
+        body: 
+          statement: 
+            expression: 
+              logical or: 
+                logical and: 
+                  comparison: 
+                    bitwise or: 
+                      bitwise xor: 
+                        bitwise and: 
+                          shift: 
+                            addition: 
+                              multiplication: 
+                                cast: 
+                                  unary: 
+                                    primary: 
+                                      call function: print_u32
+                                      with arguments:
+                                        expression: 
+                                          logical or: 
+                                            logical and: 
+                                              comparison: 
+                                                bitwise or: 
+                                                  bitwise xor: 
+                                                    bitwise and: 
+                                                      shift: 
+                                                        addition: 
+                                                          multiplication: 
+                                                            cast: 
+                                                              unary: 
+                                                                primary: 
+                                                                  call function: compute
+                                                                  with arguments:
+                                                                    expression: 
+                                                                      logical or: 
+                                                                        logical and: 
+                                                                          comparison: 
+                                                                            bitwise or: 
+                                                                              bitwise xor: 
+                                                                                bitwise and: 
+                                                                                  shift: 
+                                                                                    addition: 
+                                                                                      multiplication: 
+                                                                                        cast: 
+                                                                                          unary: 
+                                                                                            primary: 
+                                                                                              literal: 42
+                                                                    expression: 
+                                                                      logical or: 
+                                                                        logical and: 
+                                                                          comparison: 
+                                                                            bitwise or: 
+                                                                              bitwise xor: 
+                                                                                bitwise and: 
+                                                                                  shift: 
+                                                                                    addition: 
+                                                                                      multiplication: 
+                                                                                        cast: 
+                                                                                          unary: 
+                                                                                            primary: 
+                                                                                              literal: 239
+                                                              to type: 
+                                                                identifier: u32

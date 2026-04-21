@@ -1,4 +1,5 @@
 #include <iostream>
+#include <ranges>
 #include <stdexcept>
 #include <type_traits>
 
@@ -15,16 +16,57 @@ bool InterpreterVisitor::check_interrupt() const {
 
 calc_result_t
 InterpreterVisitor::operator()(const ast::IdentifierNode& identifier) {
+  if (identifier.type_id == tp::no_type_id) {
+    throw std::runtime_error("Call InterpreterVisitor::operator()(const "
+                             "ast::IdentifierNode&) with not_type_id");
+  }
+
   const SymbolTable* scope = identifier.table;
 
   while (scope != nullptr) {
-    try {
-      std::cout << scope << std::endl;
-      return value_tables_.at(scope).at(identifier.identifier->name);
-      for (auto [key, value] : value_tables_.at(scope)) {
-        std::cout << key << ": " << value.index() << std::endl;
+    if (value_tables_.contains(scope) &&
+        value_tables_.at(scope).contains(identifier.identifier->name)) {
+      auto& value = value_tables_.at(scope).at(identifier.identifier->name);
+
+      bool is_corrent_type = std::visit(
+          [&name = identifier.identifier->name](auto&& val, auto&& type) {
+            using expected_type = std::decay_t<decltype(type)>;
+            using val_type = std::decay_t<decltype(val)>;
+
+            if constexpr (requires {
+                            typename expected_type::interpret_type;
+                          }) {
+              if constexpr (!std::is_same_v<
+                                typename expected_type::interpret_type,
+                                val_type>) {
+                return false;
+              }
+              return true;
+            }
+
+            return false;
+          },
+          value,
+          type_store_.get_type(type_store_.resolve(identifier.type_id)).type);
+
+      if (is_corrent_type) {
+        return value;
+      } else {
+        std::cerr << value.index() << std::endl;
+        std::visit([](auto&& type) { std::cerr << type << std::endl; },
+                   type_store_.get_type(identifier.type_id).type);
+        std::cerr << "incorrent type in variable "
+                  << identifier.identifier->name << " at position "
+                  << identifier << std::endl;
+        std::cerr << "Identifier type id: " << identifier.type_id << std::endl;
+        std::cerr << "Resolved type id: "
+                  << type_store_.resolve(identifier.type_id) << std::endl;
+        std::visit(
+            [](auto&& type) { std::cerr << type << std::endl; },
+            type_store_.get_type(type_store_.resolve(identifier.type_id)).type);
+        throw std::runtime_error("incorrent type");
       }
-    } catch (const std::out_of_range&) {
+    } else {
       scope = scope->get_parent();
     }
   }
@@ -34,9 +76,41 @@ InterpreterVisitor::operator()(const ast::IdentifierNode& identifier) {
 }
 
 calc_result_t InterpreterVisitor::operator()(const ast::LiteralNode& literal) {
-  calc_result_t result =
-      std::visit([](auto&& literal) -> calc_result_t { return literal.value; },
-                 *literal.literal);
+  if (std::holds_alternative<tp::IntLiteral>(
+          type_store_.get_type(type_store_.resolve(literal.type_id)).type) ||
+      std::holds_alternative<tp::FloatLiteral>(
+          type_store_.get_type(type_store_.resolve(literal.type_id)).type)) {
+    std::cerr << "incorrent type in literal ";
+    std::visit([](auto&& literal) { std::cerr << literal.value << ' '; },
+               *literal.literal);
+    std::cerr << "in position " << static_cast<tkn::Position>(literal)
+              << std::endl;
+  }
+
+  calc_result_t result = std::visit(
+      [this, &node = literal](auto&& literal) -> calc_result_t {
+        auto& expected_type =
+            type_store_.get_type(type_store_.resolve(node.type_id)).type;
+
+        return std::visit(
+            [&literal = literal.value](auto&& type) -> calc_result_t {
+              using pure_type = std::decay_t<decltype(type)>;
+              if constexpr (
+                  requires { typename pure_type::interpret_type; } &&
+                  requires {
+                    static_cast<pure_type::interpret_type>(literal);
+                  }) {
+                return static_cast<pure_type::interpret_type>(literal);
+              } else {
+                throw std::runtime_error("Literal type is not supported");
+              }
+            },
+            expected_type);
+      },
+      *literal.literal);
+
+  if (std::holds_alternative<tkn::IntLiteral>(*literal.literal)) {
+  }
 
   return result;
 }
@@ -44,7 +118,17 @@ calc_result_t InterpreterVisitor::operator()(const ast::LiteralNode& literal) {
 calc_result_t
 InterpreterVisitor::operator()(const ast::FunctionCallNode& fn_call) {
 
-  if (fn_call.name->identifier->name == "println") {
+  static const std::vector<std::string> print_names{
+      "print_i8",   "print_i16",  "print_i32", "print_i64", "print_u8",
+      "print_u16",  "print_u32",  "print_u64", "print_f32", "print_f64",
+      "print_char", "print_bool", "print_void"};
+  if (fn_call.name->type_id == tp::no_type_id) {
+    throw std::runtime_error("Call InterpreterVisitor::operator()(const "
+                             "ast::FunctionCallNode&) with not_type_id");
+  }
+
+  if (std::find(print_names.begin(), print_names.end(),
+                fn_call.name->identifier->name) != print_names.end()) {
     for (std::size_t i = 0; i < fn_call.arguments.size(); ++i) {
       auto& argument = fn_call.arguments[i];
       auto value = operator()(argument);
@@ -54,13 +138,18 @@ InterpreterVisitor::operator()(const ast::FunctionCallNode& fn_call) {
       }
 
       std::visit(
-          [](auto&& value) {
-            if constexpr (std::is_same_v<std::decay_t<decltype(value)>, bool>) {
+          [&](auto&& value) {
+            using value_type = std::decay_t<decltype(value)>;
+
+            if constexpr (std::is_same_v<value_type, bool>) {
               if (value) {
                 std::cout << "true";
               } else {
                 std::cout << "false";
               }
+            } else if constexpr (std::is_same_v<value_type, std::int8_t> ||
+                                 std::is_same_v<value_type, std::uint8_t>) {
+              std::cout << static_cast<std::int16_t>(value);
             } else {
               std::cout << value;
             }
@@ -78,33 +167,68 @@ InterpreterVisitor::operator()(const ast::FunctionCallNode& fn_call) {
     return Dummy{};
   }
 
-  const SymbolTable* table = fn_call.table;
+  const Symbol* function_symbol =
+      fn_call.table->get_function_symbol_in_position(
+          fn_call.name->identifier->name, fn_call);
 
-  if (table == nullptr) {
-    throw std::runtime_error("function " + fn_call.name->identifier->name +
-                             " is not defined");
-  }
-
-  const Symbol* symbol = table->get_function_symbol_in_position(
-      fn_call.name->identifier->name, static_cast<tkn::Position>(fn_call));
-
-  ast::FunctionDefinitionNode* definition = symbol->definition;
+  const ast::FunctionDefinitionNode* definition = function_symbol->definition;
 
   if (definition == nullptr) {
-    throw std::runtime_error("function " + fn_call.name->identifier->name +
-                             " is not defined");
+    throw std::runtime_error("error in function symbol invariant");
   }
 
-  return operator()(*definition->body);
+  if (fn_call.arguments.size() != definition->argument_list.size()) {
+    throw std::runtime_error("wrong number of arguments");
+  }
+
+  if (!fn_call.arguments.empty()) {
+    SymbolTable* argument_scope = definition->argument_list.front().first.table;
+
+    auto argument_names = definition->argument_list |
+                          std::views::transform([](const auto& argument) {
+                            return argument.first.identifier->name;
+                          });
+
+    value_tables_.insert_or_assign(
+        argument_scope, std::unordered_map<std::string, calc_result_t>{});
+
+    for (auto&& [argument_name, argument_value] :
+         std::views::zip(argument_names, fn_call.arguments)) {
+      auto value = operator()(argument_value);
+
+      if (check_interrupt()) {
+        return Dummy{};
+      }
+
+      value_tables_.at(argument_scope).insert_or_assign(argument_name, value);
+    }
+  }
+
+  auto result_value = operator()(*definition->body);
+
+  if (check_interrupt()) {
+    return Dummy{};
+  }
+
+  return result_value;
 }
 
 calc_result_t
 InterpreterVisitor::operator()(const ast::ExpressionNode& exprsession) {
+  if (exprsession.type_id == tp::no_type_id) {
+    throw std::runtime_error("Call InterpreterVisitor::operator()(const "
+                             "ast::ExpressionNode&) with not_type_id");
+  }
   return std::visit(*this, *exprsession.node);
 }
 
 calc_result_t
 InterpreterVisitor::operator()(const ast::BlockExpressionNode& expression) {
+  if (expression.type_id == tp::no_type_id) {
+    throw std::runtime_error("Call InterpreterVisitor::operator()(const "
+                             "ast::BlockExpressionNode&) with not_type_id");
+  }
+
   for (auto& stmt : expression.statements) {
     operator()(stmt);
     if (check_interrupt()) {
@@ -120,11 +244,17 @@ InterpreterVisitor::operator()(const ast::BlockExpressionNode& expression) {
   if (check_interrupt()) {
     return Dummy{};
   }
+
   return result;
 }
 
 calc_result_t
 InterpreterVisitor::operator()(const ast::IfExpressionNode& expression) {
+  if (expression.type_id == tp::no_type_id) {
+    throw std::runtime_error("Call InterpreterVisitor::operator()(const "
+                             "ast::IfExpressionNode&) with not_type_id");
+  }
+
   auto value = operator()(*expression.condition);
   if (check_interrupt()) {
     return Dummy{};
@@ -176,6 +306,11 @@ InterpreterVisitor::operator()(const ast::IfExpressionNode& expression) {
 
 calc_result_t
 InterpreterVisitor::operator()(const ast::AssignmentNode& assignment) {
+  if (assignment.type_id == tp::no_type_id) {
+    throw std::runtime_error("Call InterpreterVisitor::operator()(const "
+                             "ast::AssignmentNode&) with not_type_id");
+  }
+
   auto value = operator()(*assignment.right);
   if (check_interrupt()) {
     return Dummy{};
@@ -183,12 +318,13 @@ InterpreterVisitor::operator()(const ast::AssignmentNode& assignment) {
 
   const SymbolTable* table = assignment.table;
   while (table != nullptr) {
-    try {
+    if (value_tables_.contains(table) &&
+        value_tables_.at(table).contains(assignment.left->identifier->name)) {
       value_tables_.at(table).at(assignment.left->identifier->name) = value;
       break;
-    } catch (const std::out_of_range&) {
-      table = table->get_parent();
     }
+
+    table = table->get_parent();
   }
 
   if (table == nullptr) {

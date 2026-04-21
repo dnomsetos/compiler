@@ -15,6 +15,8 @@ public:
   tp::TypeId new_function(tp::TypeId return_type = tp::no_type_id,
                           std::vector<tp::TypeId>&& args = {});
 
+  tp::TypeId new_literal_type(type_tuple_to_variant_t<tp::LiteralTypeTuple>);
+
   tp::TypeId new_basic_type(tp::BasicTypeVariant);
 
   tp::TypeId resolve(tp::TypeId type_id);
@@ -22,9 +24,6 @@ public:
   bool unify(tp::TypeId type1, tp::TypeId type2);
 
   tp::Type& get_type(tp::TypeId type_id);
-
-  tp::TypeId find_common_for_literal(tp::TypeId expected,
-                                     tp::TypeId mayby_literal);
 
 private:
   // key is index in BasicTypeVariant

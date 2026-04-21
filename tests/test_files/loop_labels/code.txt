@@ -14,7 +14,7 @@ fn labeled_loop_block_value(a: i32, b: i32) -> i32 {
             };
         }
 
-        'inner: loop {
+        let z = 'inner: loop {
             if x > 0 {
                 break 'outer {
                     let s = x + y;
@@ -29,13 +29,17 @@ fn labeled_loop_block_value(a: i32, b: i32) -> i32 {
                 let k = 1;
                 k
             };
-        }
+        };
 
-        break 'outer {
+        break 'outer ({
             let fallback = 0;
             fallback
-        };
-   };
+        });
+    };
 
     result
+}
+
+fn main() {
+    print_i32(labeled_loop_block_value(42, 239));
 }

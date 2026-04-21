@@ -237,7 +237,7 @@ function definition:
                           cast: 
                             unary: 
                               primary: 
-                                call function: println
+                                call function: print_u8
                                 with arguments:
                                   expression: 
                                     logical or: 
@@ -297,7 +297,7 @@ function definition:
                           cast: 
                             unary: 
                               primary: 
-                                call function: aboba
+                                call function: print_char
                                 with arguments:
                                   expression: 
                                     logical or: 
@@ -312,7 +312,23 @@ function definition:
                                                       cast: 
                                                         unary: 
                                                           primary: 
-                                                            literal: 1
+                                                            literal: c
+    statement: 
+      expression: 
+        logical or: 
+          logical and: 
+            comparison: 
+              bitwise or: 
+                bitwise xor: 
+                  bitwise and: 
+                    shift: 
+                      addition: 
+                        multiplication: 
+                          cast: 
+                            unary: 
+                              primary: 
+                                call function: print_u16
+                                with arguments:
                                   expression: 
                                     logical or: 
                                       logical and: 
@@ -326,32 +342,63 @@ function definition:
                                                       cast: 
                                                         unary: 
                                                           primary: 
-                                                            literal: true
-                                  expression: 
-                                    logical or: 
-                                      logical and: 
-                                        comparison: 
-                                          bitwise or: 
-                                            bitwise xor: 
-                                              bitwise and: 
-                                                shift: 
-                                                  addition: 
-                                                    multiplication: 
-                                                      cast: 
-                                                        unary: 
-                                                          primary: 
-                                                            literal: 2
-                                  expression: 
-                                    logical or: 
-                                      logical and: 
-                                        comparison: 
-                                          bitwise or: 
-                                            bitwise xor: 
-                                              bitwise and: 
-                                                shift: 
-                                                  addition: 
-                                                    multiplication: 
-                                                      cast: 
-                                                        unary: 
-                                                          primary: 
-                                                            literal: a
+                                                            call function: aboba
+                                                            with arguments:
+                                                              expression: 
+                                                                logical or: 
+                                                                  logical and: 
+                                                                    comparison: 
+                                                                      bitwise or: 
+                                                                        bitwise xor: 
+                                                                          bitwise and: 
+                                                                            shift: 
+                                                                              addition: 
+                                                                                multiplication: 
+                                                                                  cast: 
+                                                                                    unary: 
+                                                                                      primary: 
+                                                                                        literal: 1
+                                                              expression: 
+                                                                logical or: 
+                                                                  logical and: 
+                                                                    comparison: 
+                                                                      bitwise or: 
+                                                                        bitwise xor: 
+                                                                          bitwise and: 
+                                                                            shift: 
+                                                                              addition: 
+                                                                                multiplication: 
+                                                                                  cast: 
+                                                                                    unary: 
+                                                                                      primary: 
+                                                                                        literal: true
+                                                              expression: 
+                                                                logical or: 
+                                                                  logical and: 
+                                                                    comparison: 
+                                                                      bitwise or: 
+                                                                        bitwise xor: 
+                                                                          bitwise and: 
+                                                                            shift: 
+                                                                              addition: 
+                                                                                multiplication: 
+                                                                                  cast: 
+                                                                                    unary: 
+                                                                                      primary: 
+                                                                                        literal: 2
+                                                              expression: 
+                                                                logical or: 
+                                                                  logical and: 
+                                                                    comparison: 
+                                                                      bitwise or: 
+                                                                        bitwise xor: 
+                                                                          bitwise and: 
+                                                                            shift: 
+                                                                              addition: 
+                                                                                multiplication: 
+                                                                                  cast: 
+                                                                                    unary: 
+                                                                                      primary: 
+                                                                                        literal: a
+                                                        to type: 
+                                                          identifier: u16

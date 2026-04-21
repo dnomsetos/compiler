@@ -58,9 +58,9 @@ auto read_string(const std::string& code, std::size_t i, bool (*filter)(char))
 }
 
 auto read_number(const std::string& code, std::size_t i)
-    -> std::pair<std::uint64_t, std::size_t> {
+    -> std::pair<std::int64_t, std::size_t> {
 
-  std::uint64_t value = 0;
+  std::int64_t value = 0;
 
   while (i < code.size() && code[i] >= '0' && code[i] <= '9') {
     value *= 10;
@@ -273,11 +273,8 @@ auto tokenize(const std::string& code) -> std::deque<tkn::TokenInfo> {
     } else if (c == '"') {
       read_string_literal(code, i, current_position, tokens);
     } else if (c == '\'') {
-      // std::cout << "here!" << std::endl;
       read_char_literal_or_label(code, i, current_position, tokens);
     } else {
-      // std::cout << code[i] << code[i + 1] << code[i + 2] << code[i + 3]
-      // << code[i + 4] << std::endl;
       read_language_symbol(code, i, current_position, tokens);
     }
   }

@@ -16,13 +16,17 @@
       "big_block_expression", "loop_expression", "loop_labels",                \
       "function_in_function", "mini_program"
 
+const std::string code_filename = "/code.txt";
+const std::string ast_filename = "/ast.txt";
+const std::string interpret_result_filename = "/interpret_result.txt";
+
 class ParseTests : public testing::TestWithParam<std::string> {};
 
 class InterpretTests : public testing::TestWithParam<std::string> {};
 
 auto prepare_test_data(const std::string& dir_name)
     -> std::optional<ParseResult<ast::Program>> {
-  std::ifstream code(PARSE_TEST_DATA_DIR + dir_name + "/code.txt");
+  std::ifstream code(PARSE_TEST_DATA_DIR + dir_name + code_filename);
   if (!code.is_open()) {
     return std::nullopt;
   }
@@ -48,13 +52,14 @@ TEST_P(ParseTests, ) {
   PrintVisitor visitor(buffer);
   visitor(*ast.value().first);
 
-  std::ifstream result(PARSE_TEST_DATA_DIR + dir_name + "/result.txt");
+  std::ifstream result(
+      PARSE_TEST_DATA_DIR + dir_name + ast_filename, std::ios::binary);
   ASSERT_TRUE(result.is_open());
 
   std::stringstream result_buffer;
   result_buffer << result.rdbuf();
 
-  ASSERT_EQ(buffer.str(), result_buffer.str());
+  ASSERT_EQ(result_buffer.str(), buffer.str());
 }
 
 TEST_P(InterpretTests, ) {
@@ -73,18 +78,19 @@ TEST_P(InterpretTests, ) {
   SemanticVisitor visitor(type_store, symbol_table);
   ASSERT_NO_THROW(visitor.visit(*ast.value().first));
 
-  // InterpreterVisitor interpreter(type_store);
-  // ASSERT_NO_THROW(interpreter(*ast.value().first, "main"));
-  //
-  // std::string output = testing::internal::GetCapturedStdout();
-  //
-  // std::ifstream result(PARSE_TEST_DATA_DIR + dir_name + "/output.txt");
-  // ASSERT_TRUE(result.is_open());
-  //
-  // std::stringstream buffer;
-  // buffer << result.rdbuf();
-  //
-  // ASSERT_EQ(output, buffer.str());
+  InterpreterVisitor interpreter(type_store);
+  ASSERT_NO_THROW(interpreter(*ast.value().first, "main"));
+
+  std::string output = testing::internal::GetCapturedStdout();
+
+  std::ifstream result(PARSE_TEST_DATA_DIR + dir_name +
+                       interpret_result_filename);
+  ASSERT_TRUE(result.is_open());
+
+  std::stringstream buffer;
+  buffer << result.rdbuf();
+
+  ASSERT_EQ(output, buffer.str());
 }
 
 auto test_name_generator(
