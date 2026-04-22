@@ -89,6 +89,7 @@ void print_help() {
   std::cout << "  compiler " << print_ast_mode << " <file> [" << out_file_arg
             << " <file>] [" << skip_empty_arg << " <true|false>]\n";
   std::cout << "  compiler " << interpret_mode << " <file>\n";
+  std::cout << "  compiler " << semantic_mode << " <file>\n";
 }
 
 int main(int argc, char** argv) {
