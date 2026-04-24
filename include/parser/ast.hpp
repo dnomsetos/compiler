@@ -19,6 +19,7 @@ namespace tp {
 
 using TypeId = std::size_t;
 
+
 } // namespace tp
 
 namespace ast {
