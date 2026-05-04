@@ -53,17 +53,21 @@ InterpreterVisitor::operator()(const ast::IdentifierNode& identifier) {
         return value;
       } else {
         std::cerr << value.index() << std::endl;
-        std::visit([](auto&& type) { std::cerr << type << std::endl; },
-                   type_store_.get_type(identifier.type_id).type);
         std::cerr << "incorrent type in variable "
                   << identifier.identifier->name << " at position "
                   << identifier << std::endl;
+
         std::cerr << "Identifier type id: " << identifier.type_id << std::endl;
         std::cerr << "Resolved type id: "
                   << type_store_.resolve(identifier.type_id) << std::endl;
+
+        std::visit([](auto&& type) { std::cerr << type << std::endl; },
+                   type_store_.get_type(identifier.type_id).type);
+
         std::visit(
             [](auto&& type) { std::cerr << type << std::endl; },
             type_store_.get_type(type_store_.resolve(identifier.type_id)).type);
+
         throw std::runtime_error("incorrent type");
       }
     } else {
@@ -87,32 +91,51 @@ calc_result_t InterpreterVisitor::operator()(const ast::LiteralNode& literal) {
               << std::endl;
   }
 
-  calc_result_t result = std::visit(
-      [this, &node = literal](auto&& literal) -> calc_result_t {
-        auto& expected_type =
-            type_store_.get_type(type_store_.resolve(node.type_id)).type;
+  // calc_result_t result = std::visit(
+  //     [this, &node = literal](auto&& literal) -> calc_result_t {
+  //       auto& expected_type =
+  //           type_store_.get_type(type_store_.resolve(node.type_id)).type;
+  //
+  //       return std::visit(
+  //           [&literal = literal.value](auto&& type) -> calc_result_t {
+  //             using pure_type = std::decay_t<decltype(type)>;
+  //             if constexpr (
+  //                 requires { typename pure_type::interpret_type; } &&
+  //                 requires {
+  //                   static_cast<pure_type::interpret_type>(literal);
+  //                 }) {
+  //               return static_cast<pure_type::interpret_type>(literal);
+  //             } else {
+  //               std::cout << literal << std::endl;
+  //               throw std::runtime_error("Literal type is not supported");
+  //             }
+  //           },
+  //           expected_type);
+  //     },
+  //     *literal.literal);
 
-        return std::visit(
-            [&literal = literal.value](auto&& type) -> calc_result_t {
-              using pure_type = std::decay_t<decltype(type)>;
-              if constexpr (
-                  requires { typename pure_type::interpret_type; } &&
-                  requires {
-                    static_cast<pure_type::interpret_type>(literal);
-                  }) {
-                return static_cast<pure_type::interpret_type>(literal);
-              } else {
-                throw std::runtime_error("Literal type is not supported");
-              }
-            },
-            expected_type);
+  return std::visit(
+      [&](auto&& in_literal, auto&& type) -> calc_result_t {
+        using pure_type = std::decay_t<decltype(type)>;
+
+        if constexpr (requires { typename pure_type::interpret_type; }) {
+          using result_type = typename pure_type::interpret_type;
+
+          if constexpr (requires {
+                          result_type{
+                              static_cast<result_type>(in_literal.value)};
+                        }) {
+            return result_type{static_cast<result_type>(in_literal.value)};
+          } else {
+            throw std::runtime_error("Incorrect literal at " +
+                                     std::to_string(literal.start.line) + ":" +
+                                     std::to_string(literal.start.offset));
+          }
+        } else {
+          throw std::runtime_error("Incorrect type of literal");
+        }
       },
-      *literal.literal);
-
-  if (std::holds_alternative<tkn::IntLiteral>(*literal.literal)) {
-  }
-
-  return result;
+      *literal.literal, type_store_.get_type(literal.type_id).type);
 }
 
 calc_result_t
@@ -527,8 +550,20 @@ InterpreterVisitor::operator()(const ast::VariableDefinitionNode& var_def) {
     return Dummy{};
   }
 
-  value_tables_.at(current_table)
-      .emplace(var_def.name->identifier->name, std::move(value));
+  std::visit(
+      [&](auto&& type, auto&& real_value) {
+        using real_type = std::decay_t<decltype(type)>;
+
+        if constexpr (requires { static_cast<real_type>(real_value); }) {
+          value_tables_.at(current_table)
+              .emplace(var_def.name->identifier->name,
+                       std::move(static_cast<std::decay_t<decltype(type)>>(
+                           real_value)));
+        } else {
+          throw std::runtime_error("Incorrent types in variable definition");
+        }
+      },
+      it->second, value);
 
   return Dummy{};
 }

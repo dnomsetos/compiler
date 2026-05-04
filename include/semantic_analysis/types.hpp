@@ -9,7 +9,7 @@
 
 namespace ast {
 
-struct FunctionDefinitionNode;
+struct FunctionTypeDefinitionNode;
 
 } // namespace ast
 
@@ -43,25 +43,22 @@ GENERATE_TYPE(Char, char)
 GENERATE_TYPE(Void, Dummy)
 
 struct IntLiteral {
-  std::int64_t value;
+  // std::int64_t value;
   TypeId parent = no_type_id;
 };
 
-inline std::ostream& operator<<(std::ostream& out, const IntLiteral& literal) {
-  return out << "Integer literal with value " << literal.value;
-}
+std::ostream& operator<<(std::ostream& out, const IntLiteral& literal);
 
 struct FloatLiteral {
-  std::float64_t value;
+  // std::float64_t value;
   TypeId parent = no_type_id;
 };
 
-inline std::ostream& operator<<(std::ostream& out,
-                                const FloatLiteral& literal) {
-  return out << "Float literal with value " << literal.value;
-}
+std::ostream& operator<<(std::ostream& out, const FloatLiteral& literal);
 
 using LiteralTypeTuple = TypeTuple<IntLiteral, FloatLiteral>;
+
+using LiteralVariant = type_tuple_to_variant_t<LiteralTypeTuple>;
 
 using SignedIntegerTypeTuple = TypeTuple<I8, I16, I32, I64>;
 
@@ -83,45 +80,47 @@ using NumericTypeTuple =
 
 using BasicTypeTypeTuple =
     type_tuple_concat_t<IntegerTypeTuple, BooleanTypeTuple, CharTypeTuple,
-                        FloatingPointTypeTuple, VoidTypeTuple,
-                        LiteralTypeTuple>;
+                        FloatingPointTypeTuple, VoidTypeTuple>;
 
 using BasicTypeVariant = type_tuple_to_variant_t<BasicTypeTypeTuple>;
 
-struct VariableType {
-  TypeId parent = no_type_id;
-};
+// struct VariableType {
+//   TypeId parent = no_type_id;
+// };
 
-inline std::ostream& operator<<(std::ostream& out, const VariableType&) {
-  out << "VariableType" << std::endl;
-  return out;
-}
+// std::ostream& operator<<(std::ostream& out, const VariableType&);
 
-struct Function {
+struct FunctionType {
   std::vector<TypeId> args;
   TypeId return_type;
 
-  bool operator==(const Function& other) const = default;
+  FunctionType(std::vector<TypeId> args, TypeId return_type);
+
+  bool operator==(const FunctionType& other) const = default;
 };
 
-inline std::ostream& operator<<(std::ostream& out, const Function&) {
-  out << "Function" << std::endl;
-  return out;
-}
+std::ostream& operator<<(std::ostream& out, const FunctionType&);
 
 struct NoType {};
 
-inline std::ostream& operator<<(std::ostream& out, const NoType&) {
-  out << "NoType" << std::endl;
-  return out;
-}
+std::ostream& operator<<(std::ostream& out, const NoType&);
 
-using TypeTypeTuple =
-    Concat<BasicTypeTypeTuple, TypeTuple<VariableType, Function, NoType>>::type;
+static_assert(type_tuple_size_v<BasicTypeTypeTuple> == 13);
+
+using TypeTypeTuple = Concat<BasicTypeTypeTuple, LiteralTypeTuple,
+                             TypeTuple<FunctionType, NoType>>::type;
 
 using TypeVariant = type_tuple_to_variant_t<TypeTypeTuple>;
 
 struct Type {
+  Type();
+
+  Type(BasicTypeVariant type);
+
+  Type(FunctionType&& type);
+
+  Type(LiteralVariant&& type);
+
   TypeVariant type;
 };
 
@@ -133,23 +132,11 @@ inline constexpr std::pair<const char*, BasicTypeVariant> basic_type_names[] = {
     {"void", Void{}},
 };
 
-inline std::optional<BasicTypeVariant> get_type(const std::string& name) {
-  auto it =
-      std::find_if(std::begin(basic_type_names), std::end(basic_type_names),
-                   [&name](auto&& val) { return val.first == name; });
+constexpr std::size_t basic_type_count = std::size(basic_type_names);
 
-  if (it != std::end(basic_type_names)) {
-    return it->second;
-  } else {
-    return std::nullopt;
-  }
-}
+std::optional<BasicTypeVariant> get_type(const std::string& name);
 
-inline std::ostream& operator<<(std::ostream& out, const Type& type) {
-  std::visit([&out](auto&& type) { out << type << std::endl; }, type.type);
-
-  return out;
-}
+std::ostream& operator<<(std::ostream& out, const Type& type);
 
 inline const std::pair<tp::TypeVariant, calc_result_t> default_value_table[] = {
     {I8{}, std::int8_t{0}},

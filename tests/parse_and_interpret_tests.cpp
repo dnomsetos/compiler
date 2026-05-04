@@ -9,12 +9,13 @@
 #include <semantic_analysis/type_storage.hpp>
 #include <testing_utilities/interpreter_visitor.hpp>
 #include <testing_utilities/print_visitor.hpp>
+#include <testing_utilities/type_checker.hpp>
 
 #define DIR_NAMES_LIST                                                         \
   "simple", "different_types", "if_expression", "if_elif_statement",           \
       "big_expression", "simple_cast", "simple_block_expression",              \
       "big_block_expression", "loop_expression", "loop_labels",                \
-      "function_in_function", "mini_program"
+      "function_in_function", "mini_program", "strange_situation"
 
 const std::string code_filename = "/code.txt";
 const std::string ast_filename = "/ast.txt";
@@ -77,6 +78,9 @@ TEST_P(InterpretTests, ) {
   GlobalSymbolTable symbol_table{type_store};
   SemanticVisitor visitor(type_store, symbol_table);
   ASSERT_NO_THROW(visitor.visit(*ast.value().first));
+
+  TypeChecker type_checker;
+  ASSERT_NO_THROW(type_checker.visit(*ast.value().first));
 
   InterpreterVisitor interpreter(type_store);
   ASSERT_NO_THROW(interpreter(*ast.value().first, "main"));

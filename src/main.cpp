@@ -8,6 +8,7 @@
 #include <semantic_analysis/semantic_visitor.hpp>
 #include <testing_utilities/interpreter_visitor.hpp>
 #include <testing_utilities/print_visitor.hpp>
+#include <testing_utilities/type_checker.hpp>
 #include <utility/output.hpp>
 
 const int number_of_required_args = 3;
@@ -53,6 +54,9 @@ void interpret(const std::string& code) {
   SemanticVisitor visitor(type_store, global_symbol_table);
   visitor.visit(*ast.value().first);
 
+  TypeChecker type_checker;
+  type_checker.visit(*ast.value().first);
+
   InterpreterVisitor interpreter(type_store);
   auto result = interpreter(*ast.value().first, "main");
 
@@ -82,6 +86,9 @@ void semantic(const std::string& code) {
 
   SemanticVisitor visitor(type_store, global_symbol_table);
   visitor.visit(*ast.value().first);
+
+  TypeChecker type_checker;
+  type_checker.visit(*ast.value().first);
 }
 
 void print_help() {

@@ -83,7 +83,9 @@ public:
 
   SymbolTable* find_loop_by_label(const std::string& label);
 
-  // private:
+  void change_symbol_type(const std::string& name, tp::TypeId type);
+
+private:
   std::size_t index_;
   SymbolTable* parent_ = nullptr;
   std::pmr::vector<alloc::pmr_unique_ptr<SymbolTable>> children_{&alloc::mr};

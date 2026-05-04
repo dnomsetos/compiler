@@ -155,12 +155,24 @@ SymbolTable* SymbolTable::find_loop_by_label(const std::string& label) {
   return parent_->find_loop_by_label(label);
 }
 
+void SymbolTable::change_symbol_type(const std::string& name, tp::TypeId type) {
+  if (variable_symbols_.contains(name)) {
+    variable_symbols_.at(name).type = type;
+    return;
+  }
+
+  if (parent_ == nullptr) {
+    throw std::runtime_error("Unknown name " + name);
+  }
+  parent_->change_symbol_type(name, type);
+}
+
 GlobalSymbolTable::GlobalSymbolTable(TypeStore& type_store) : root_{} {
   auto add_symbol = [&]<typename T>(const std::string& name) {
     Symbol symbol{
         .position = tkn::Position{0, 0, 0},
-        .type = type_store.new_function(type_store.new_basic_type(tp::Void{}),
-                                        {type_store.new_basic_type(T{})}),
+        .type = type_store.get_function(type_store.get_basic_type(tp::Void{}),
+                                        {type_store.get_basic_type(T{})}),
 
         .scope = &root_,
         .definition = nullptr};

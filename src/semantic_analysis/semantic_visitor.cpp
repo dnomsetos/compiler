@@ -1,3 +1,4 @@
+#include <iostream>
 #include <ranges>
 
 #include <semantic_analysis/semantic_visitor.hpp>
@@ -10,6 +11,8 @@ void SemanticVisitor::visit(ast::Program& program) {
   for (auto& definition : program.definitions) {
     std::visit([this](auto& val) { this->visit(val); }, definition);
   }
+
+  type_store_.handle_ast_types();
 }
 
 void SemanticVisitor::visit(ast::VariableDefinitionNode& variable_definition) {
@@ -28,9 +31,7 @@ void SemanticVisitor::visit(ast::VariableDefinitionNode& variable_definition) {
     }
 
     has_type = true;
-    declared_type = type_store_.new_basic_type(optional_type.value());
-  } else {
-    declared_type = type_store_.new_var();
+    declared_type = type_store_.get_basic_type(optional_type.value());
   }
 
   if (variable_definition.value.has_value()) {
@@ -38,28 +39,21 @@ void SemanticVisitor::visit(ast::VariableDefinitionNode& variable_definition) {
       visit(*variable_definition.value.value(), declared_type);
     } else {
       visit(*variable_definition.value.value());
+      declared_type = variable_definition.value.value()->type_id;
     }
 
     if (std::holds_alternative<tp::IntLiteral>(
             type_store_.get_type(variable_definition.value.value()->type_id)
                 .type)) {
 
-      auto& int_literal = std::get<tp::IntLiteral>(
-          type_store_.get_type(variable_definition.value.value()->type_id)
-              .type);
-
-      int_literal.parent = type_store_.new_basic_type(tp::I32{});
+      type_store_.add_ast_type(&*variable_definition.value.value());
 
     } else if (std::holds_alternative<tp::FloatLiteral>(
                    type_store_
                        .get_type(variable_definition.value.value()->type_id)
                        .type)) {
 
-      auto& float_literal = std::get<tp::FloatLiteral>(
-          type_store_.get_type(variable_definition.value.value()->type_id)
-              .type);
-
-      float_literal.parent = type_store_.new_basic_type(tp::F32{});
+      type_store_.add_ast_type(&*variable_definition.value.value());
     }
 
     if (!type_store_.unify(
@@ -72,6 +66,10 @@ void SemanticVisitor::visit(ast::VariableDefinitionNode& variable_definition) {
   if (!variable_definition.type.has_value() &&
       !variable_definition.value.has_value()) {
     throw std::runtime_error("Invalid variable definition");
+  }
+
+  if (declared_type >= tp::basic_type_count) {
+    // std::cout << "Strange type at " << variable_definition << std::endl;
   }
 
   Symbol symbol{
@@ -100,9 +98,9 @@ void SemanticVisitor::visit(ast::FunctionDefinitionNode& function_definition) {
       throw std::runtime_error("Unknown type");
     }
 
-    return_type = type_store_.new_basic_type(optional_type.value());
+    return_type = type_store_.get_basic_type(optional_type.value());
   } else {
-    return_type = type_store_.new_basic_type(tp::Void{});
+    return_type = type_store_.get_basic_type(tp::Void{});
   }
 
   SymbolTable* current_scope = symbol_table_;
@@ -123,7 +121,7 @@ void SemanticVisitor::visit(ast::FunctionDefinitionNode& function_definition) {
       throw std::runtime_error("Unknown type");
     }
 
-    tp::TypeId arg_type_id = type_store_.new_basic_type(optional_type.value());
+    tp::TypeId arg_type_id = type_store_.get_basic_type(optional_type.value());
 
     Symbol symbol{
         .position = static_cast<tkn::Position>(arg_name),
@@ -133,15 +131,16 @@ void SemanticVisitor::visit(ast::FunctionDefinitionNode& function_definition) {
     };
 
     arg_name.table = symbol_table_;
+    arg_name.type_id = arg_type_id;
 
     symbol_table_->insert_variable(
         arg_name.identifier->name, std::move(symbol));
 
-    args.push_back(type_store_.new_basic_type(optional_type.value()));
+    args.push_back(type_store_.get_basic_type(optional_type.value()));
   }
 
   tp::TypeId function_type =
-      type_store_.new_function(return_type, std::move(args));
+      type_store_.get_function(return_type, std::move(args));
 
   Symbol symbol{
       .position = *function_definition.name,
@@ -188,7 +187,7 @@ void SemanticVisitor::visit(ast::ReturnStatementNode& return_statement) {
 
     value_type = return_statement.value.value()->type_id;
   } else {
-    value_type = type_store_.new_basic_type(tp::Void{});
+    value_type = type_store_.get_basic_type(tp::Void{});
   }
 
   auto& function_scope =
@@ -228,7 +227,7 @@ void SemanticVisitor::visit(ast::BreakStatementNode& break_statement) {
 
     value_type = break_statement.value.value()->type_id;
   } else {
-    value_type = type_store_.new_basic_type(tp::Void{});
+    value_type = type_store_.get_basic_type(tp::Void{});
   }
 
   if (loop_context.result_type == tp::no_type_id) {
@@ -273,6 +272,10 @@ void SemanticVisitor::visit(ast::ExpressionNode& expression,
     throw std::runtime_error(
         "Type mismatch in expression. Expected type mismatch real type.");
   }
+
+  if (expression.type_id >= tp::basic_type_count) {
+    type_store_.add_ast_type(&expression);
+  }
 }
 
 void SemanticVisitor::visit(ast::BlockExpressionNode& block,
@@ -293,7 +296,7 @@ void SemanticVisitor::visit(ast::BlockExpressionNode& block,
 
     result_type = block.value.value()->type_id;
   } else {
-    result_type = type_store_.new_basic_type(tp::Void{});
+    result_type = type_store_.get_basic_type(tp::Void{});
   }
 
   block.type_id = result_type;
@@ -305,13 +308,17 @@ void SemanticVisitor::visit(ast::BlockExpressionNode& block,
   }
 
   symbol_table_ = current_scope;
+
+  if (block.type_id >= tp::basic_type_count) {
+    type_store_.add_ast_type(&block);
+  }
 }
 
 void SemanticVisitor::visit(ast::IfExpressionNode& if_expression,
                             tp::TypeId expected_type) {
   if_expression.table = symbol_table_;
 
-  tp::TypeId condition_type = type_store_.new_basic_type(tp::Bool{});
+  tp::TypeId condition_type = type_store_.get_basic_type(tp::Bool{});
 
   visit(*if_expression.condition, condition_type);
 
@@ -350,6 +357,10 @@ void SemanticVisitor::visit(ast::IfExpressionNode& if_expression,
     throw std::runtime_error(
         "Type mismatch in if expression. Expected type mismatch real type.");
   }
+
+  if (if_expression.type_id >= tp::basic_type_count) {
+    type_store_.add_ast_type(&if_expression);
+  }
 }
 
 void SemanticVisitor::visit(ast::LoopExpressionNode& loop,
@@ -372,7 +383,7 @@ void SemanticVisitor::visit(ast::LoopExpressionNode& loop,
       std::get<SymbolTable::LoopScope>(symbol_table_->get_scope());
 
   if (loop_scope.result_type == tp::no_type_id) {
-    loop_scope.result_type = type_store_.new_basic_type(tp::Void{});
+    loop_scope.result_type = type_store_.get_basic_type(tp::Void{});
   }
 
   loop.type_id = loop_scope.result_type;
@@ -384,6 +395,10 @@ void SemanticVisitor::visit(ast::LoopExpressionNode& loop,
   }
 
   symbol_table_ = current_scope;
+
+  if (loop.type_id >= tp::basic_type_count) {
+    type_store_.add_ast_type(&loop);
+  }
 }
 
 void SemanticVisitor::visit(ast::AssignmentNode& assignment,
@@ -392,7 +407,7 @@ void SemanticVisitor::visit(ast::AssignmentNode& assignment,
 
   if (expected_type != tp::no_type_id &&
       !type_store_.unify(
-          expected_type, type_store_.new_basic_type(tp::Void{}))) {
+          expected_type, type_store_.get_basic_type(tp::Void{}))) {
     throw std::runtime_error("Type mismatch. Expected non void in assignment.");
   }
 
@@ -400,9 +415,16 @@ void SemanticVisitor::visit(ast::AssignmentNode& assignment,
       assignment.left->identifier->name,
       static_cast<tkn::Position>(*assignment.left));
 
+  assignment.left->table = symbol_table_;
+  assignment.left->type_id = symbol->type;
+
+  if (symbol->type >= tp::basic_type_count) {
+    type_store_.add_ast_type(&*assignment.left);
+  }
+
   visit(*assignment.right, symbol->type);
 
-  assignment.type_id = type_store_.new_basic_type(tp::Void{});
+  assignment.type_id = type_store_.get_basic_type(tp::Void{});
 }
 
 template <typename BinaryNode, bool NeedUnify>
@@ -429,18 +451,30 @@ void SemanticVisitor::binary_node_helper(
           "Type mismatch in empty binary node. Type mismatch expected type.");
     }
 
+    if (binary_node.type_id >= tp::basic_type_count) {
+      type_store_.add_ast_type(&binary_node);
+    }
+
     return;
   }
 
   if constexpr (is_in_type_tuple_v<BinaryNode, ast::ClosedOperatorNodeTuple>) {
     visit(*binary_node.left, expected_type);
+    // std::cout << "here" << std::endl;
   } else {
     visit(*binary_node.left);
   }
 
   left_type = type_store_.resolve(binary_node.left->type_id);
 
+  // std::cout << "expected type: " << expected_type << std::endl;
+  // std::cout << static_cast<tkn::Position>(*binary_node.left) << std::endl;
+  // std::cout << "left type: " << binary_node.left->type_id << std::endl;
+
   if (!type_check(type_store_.get_type(left_type).type)) {
+
+    // std::visit([](auto&& val) { std::cout << val << std::endl; },
+    // type_store_.get_type(left_type).type);
 
     throw std::runtime_error(
         "Type mismatch in binary node. Arguments type check failed.");
@@ -477,6 +511,10 @@ void SemanticVisitor::binary_node_helper(
       }
     }
   }
+
+  if (binary_node.type_id >= tp::basic_type_count) {
+    type_store_.add_ast_type(&binary_node);
+  }
 }
 
 template <typename LogicalNode>
@@ -485,7 +523,7 @@ void SemanticVisitor::visit(LogicalNode& logical_node,
                             tp::TypeId expected_type) {
   if (!logical_node.right.empty() && expected_type != tp::no_type_id &&
       !type_store_.unify(
-          expected_type, type_store_.new_basic_type(tp::Bool{}))) {
+          expected_type, type_store_.get_basic_type(tp::Bool{}))) {
     throw std::runtime_error(
         "Type mismatch in logical node. Expected type is not bool.");
   }
@@ -502,7 +540,7 @@ void SemanticVisitor::visit(ast::ComparisonNode& comparison_node,
                             tp::TypeId expected_type) {
   if (!comparison_node.right.empty() && expected_type != tp::no_type_id &&
       !type_store_.unify(
-          expected_type, type_store_.new_basic_type(tp::Bool{}))) {
+          expected_type, type_store_.get_basic_type(tp::Bool{}))) {
     throw std::runtime_error(
         "Type mismatch in comparison node. Expected type is not bool.");
   }
@@ -517,7 +555,8 @@ template <typename BitwiseNode>
 void SemanticVisitor::visit(BitwiseNode& bitwise_node,
                             tp::TypeId expected_type) {
   if (!bitwise_node.right.empty() && expected_type != tp::no_type_id) {
-    tp::TypeVariant& type_variant = type_store_.get_type(expected_type).type;
+    const tp::TypeVariant& type_variant =
+        type_store_.get_type(expected_type).type;
 
     if (!std::visit(
             [](auto&& type) -> bool {
@@ -550,7 +589,8 @@ void SemanticVisitor::visit(BitwiseNode& bitwise_node,
 void SemanticVisitor::visit(ast::ShiftNode& shift_node,
                             tp::TypeId expected_type) {
   if (!shift_node.right.empty() && expected_type != tp::no_type_id) {
-    tp::TypeVariant& type_variant = type_store_.get_type(expected_type).type;
+    const tp::TypeVariant& type_variant =
+        type_store_.get_type(expected_type).type;
 
     if (!std::visit(
             [](auto&& type) -> bool {
@@ -585,7 +625,8 @@ template <typename ArithmeticNode>
 void SemanticVisitor::visit(ArithmeticNode& arithmetic_node,
                             tp::TypeId expected_type) {
   if (!arithmetic_node.right.empty() && expected_type != tp::no_type_id) {
-    tp::TypeVariant& type_variant = type_store_.get_type(expected_type).type;
+    const tp::TypeVariant& type_variant =
+        type_store_.get_type(expected_type).type;
 
     if (!std::visit(
             [](auto&& type) -> bool {
@@ -633,6 +674,10 @@ void SemanticVisitor::visit(ast::CastNode& cast_node,
                                "expression mismatch expected type.");
     }
 
+    if (cast_node.type_id >= tp::basic_type_count) {
+      type_store_.add_ast_type(&cast_node);
+    }
+
     return;
   }
 
@@ -645,7 +690,7 @@ void SemanticVisitor::visit(ast::CastNode& cast_node,
     throw std::runtime_error("Unknown type");
   }
 
-  cast_node.type_id = type_store_.new_basic_type(optional_cast_type.value());
+  cast_node.type_id = type_store_.get_basic_type(optional_cast_type.value());
 
   if (std::holds_alternative<tp::IntLiteral>(
           type_store_.get_type(cast_node.expression->type_id).type) ||
@@ -660,49 +705,71 @@ void SemanticVisitor::visit(ast::CastNode& cast_node,
 
   if (expected_type != tp::no_type_id &&
       !type_store_.unify(expected_type, cast_node.type_id)) {
+
+    // std::cout << "here1" << std::endl;
+    std::visit(
+        [](auto&& val1, auto&& val2) {
+          std::cout << val1 << std::endl << val2 << std::endl;
+        },
+        type_store_.get_type(expected_type).type,
+        type_store_.get_type(cast_node.type_id).type);
+
     throw std::runtime_error(
         "Type mismatch in cast node. Cast type mismatch expected type.");
   }
 
-  tp::TypeId expression_type =
-      type_store_.resolve(cast_node.expression->type_id);
+  // if (!type_store_.unify(cast_node.type_id, cast_node.expression->type_id)) {
+  //   throw std::runtime_error(
+  //       "Type mismatch in cast node. Cast type mismatch expression type.");
+  // }
+
+  tp::TypeId expression_type = cast_node.expression->type_id;
 
   tp::Type real_expression_type = type_store_.get_type(expression_type);
 
-  if (std::holds_alternative<tp::VariableType>(real_expression_type.type)) {
-    if (!type_store_.unify(cast_node.type_id, expression_type)) {
-      throw std::runtime_error("Logic error");
-    }
-  } else {
-    if (!std::visit(
-            [](auto&& cast_type, auto&& expression_type) -> bool {
-              using cast_type_t = std::decay_t<decltype(cast_type)>;
-              using expression_type_t = std::decay_t<decltype(expression_type)>;
+  if (!std::visit(
+          [](auto&& cast_type, auto&& expression_type) -> bool {
+            using cast_type_t = std::decay_t<decltype(cast_type)>;
+            using expression_type_t = std::decay_t<decltype(expression_type)>;
 
-              if constexpr (is_in_type_tuple_v<cast_type_t,
-                                               tp::NumericTypeTuple>) {
+            if constexpr (is_in_type_tuple_v<cast_type_t,
+                                             tp::NumericTypeTuple>) {
 
-                return is_in_type_tuple_v<expression_type_t,
-                                          tp::NumericTypeTuple>;
+              return is_in_type_tuple_v<expression_type_t,
+                                        tp::NumericTypeTuple> ||
+                     std::is_same_v<expression_type_t, tp::IntLiteral> ||
+                     std::is_same_v<expression_type_t, tp::FloatLiteral>;
 
-              } else if constexpr (is_in_type_tuple_v<cast_type_t,
-                                                      tp::BooleanTypeTuple>) {
+            } else if constexpr (is_in_type_tuple_v<cast_type_t,
+                                                    tp::BooleanTypeTuple>) {
 
-                return is_in_type_tuple_v<expression_type_t,
-                                          tp::BooleanTypeTuple>;
+              return is_in_type_tuple_v<expression_type_t,
+                                        tp::BooleanTypeTuple>;
 
-              } else if constexpr (is_in_type_tuple_v<cast_type_t,
-                                                      tp::CharTypeTuple>) {
+            } else if constexpr (is_in_type_tuple_v<cast_type_t,
+                                                    tp::CharTypeTuple>) {
 
-                return is_in_type_tuple_v<expression_type_t, tp::CharTypeTuple>;
-              } else {
-                return false;
-              }
-            },
-            optional_cast_type.value(), real_expression_type.type)) {
+              return is_in_type_tuple_v<expression_type_t, tp::CharTypeTuple>;
+            } else {
+              return false;
+            }
+          },
+          optional_cast_type.value(), real_expression_type.type)) {
 
+    // std::cout << "here2" << std::endl;
+    std::visit(
+        [](auto&& val1, auto&& val2) {
+          std::cout << val1 << std::endl << val2 << std::endl;
+        },
+        optional_cast_type.value(), real_expression_type.type);
+
+    throw std::runtime_error("Type mismatch in cast node. Cast type mismatch.");
+  }
+
+  if (expression_type >= tp::basic_type_count) {
+    if (!type_store_.unify(expression_type, cast_node.type_id)) {
       throw std::runtime_error(
-          "Type mismatch in cast node. Cast type mismatch.");
+          "Type mismatch in cast node, conflict with literal type");
     }
   }
 }
@@ -722,6 +789,9 @@ void SemanticVisitor::visit(ast::UnaryNode& unary_node,
   }
 
   if (!unary_node.op.has_value()) {
+    if (unary_node.type_id >= tp::basic_type_count) {
+      type_store_.add_ast_type(&unary_node);
+    }
     return;
   }
 
@@ -747,6 +817,10 @@ void SemanticVisitor::visit(ast::UnaryNode& unary_node,
                                "applicable only to int or float.");
     }
   }
+
+  if (unary_node.type_id >= tp::basic_type_count) {
+    type_store_.add_ast_type(&unary_node);
+  }
 }
 
 void SemanticVisitor::visit(ast::PrimaryNode& primary_node,
@@ -766,6 +840,10 @@ void SemanticVisitor::visit(ast::PrimaryNode& primary_node,
     throw std::runtime_error(
         "Type mismatch in primary node. Type mismatch with expected type.");
   }
+
+  if (primary_node.type_id >= tp::basic_type_count) {
+    type_store_.add_ast_type(&primary_node);
+  }
 }
 
 void SemanticVisitor::visit(ast::FunctionCallNode& function_call,
@@ -777,8 +855,8 @@ void SemanticVisitor::visit(ast::FunctionCallNode& function_call,
   const Symbol* symbol = symbol_table_->get_function_symbol_in_position(
       function_name, static_cast<tkn::Position>(function_call));
 
-  const tp::Function& function_info =
-      std::get<tp::Function>(type_store_.get_type(symbol->type).type);
+  const tp::FunctionType& function_info =
+      std::get<tp::FunctionType>(type_store_.get_type(symbol->type).type);
 
   function_call.type_id = function_info.return_type;
 
@@ -813,6 +891,20 @@ void SemanticVisitor::visit(ast::IdentifierNode& identifier_node,
       throw std::runtime_error("Type mismatch in identifier node. Expected "
                                "type mismatch with variable type.");
     }
+
+    if (identifier_node.type_id >= tp::basic_type_count) {
+      // std::cout << "here" << std::endl;
+      tp::TypeId root = type_store_.resolve(identifier_node.type_id);
+
+      // std::cout << root << std::endl;
+
+      if (root < tp::basic_type_count) {
+        symbol_table_->change_symbol_type(identifier, root);
+      }
+
+      type_store_.add_ast_var(&identifier_node);
+    }
+
   } else if (symbol_table_->check_function_availability(identifier)) {
     const Symbol* symbol = symbol_table_->get_function_symbol_in_position(
         identifier, static_cast<tkn::Position>(identifier_node));
@@ -834,27 +926,59 @@ void SemanticVisitor::visit(ast::LiteralNode& literal_node,
   literal_node.table = symbol_table_;
 
   if (std::holds_alternative<tkn::BoolLiteral>(*literal_node.literal)) {
-    literal_node.type_id = type_store_.new_basic_type(tp::Bool{});
+
+    literal_node.type_id = type_store_.get_basic_type(tp::Bool{});
+
   } else if (std::holds_alternative<tkn::IntLiteral>(*literal_node.literal)) {
-    literal_node.type_id = type_store_.new_literal_type(tp::IntLiteral{
-        .value = std::get<tkn::IntLiteral>(*literal_node.literal).value,
-        .parent = tp::no_type_id});
+
+    if (expected_type != tp::no_type_id &&
+        !type_store_.is_integer_type(expected_type)) {
+
+      // std::cout << literal_node << std::endl;
+      throw std::runtime_error(
+          "Type mismatch in integer literal, expected type is not integer");
+
+    } else if (type_store_.is_integer_type(expected_type)) {
+      literal_node.type_id = expected_type;
+
+    } else {
+      literal_node.type_id = type_store_.new_literal_type(
+          tp::IntLiteral{.parent = tp::no_type_id});
+    }
+
+    if (literal_node.type_id >= tp::basic_type_count) {
+      // std::cout << "add " << literal_node << std::endl;
+      type_store_.add_ast_type(&literal_node);
+    }
+
   } else if (std::holds_alternative<tkn::FloatLiteral>(*literal_node.literal)) {
-    literal_node.type_id = type_store_.new_literal_type(tp::FloatLiteral{
-        .value = std::get<tkn::FloatLiteral>(*literal_node.literal).value,
-        .parent = tp::no_type_id});
+
+    if (expected_type != tp::no_type_id &&
+        !type_store_.is_float_type(expected_type)) {
+
+      throw std::runtime_error(
+          "Type mismatch in float literal, expected type is not float");
+
+    } else if (type_store_.is_float_type(expected_type)) {
+      literal_node.type_id = expected_type;
+
+    } else {
+      literal_node.type_id = type_store_.new_literal_type(
+          tp::FloatLiteral{.parent = tp::no_type_id});
+    }
+
+    if (literal_node.type_id >= tp::basic_type_count) {
+      // std::cout << "add " << literal_node << std::endl;
+      type_store_.add_ast_type(&literal_node);
+    }
+
   } else if (std::holds_alternative<tkn::CharLiteral>(*literal_node.literal)) {
-    literal_node.type_id = type_store_.new_basic_type(tp::Char{});
+
+    literal_node.type_id = type_store_.get_basic_type(tp::Char{});
   }
 
   if (expected_type != tp::no_type_id &&
       !type_store_.unify(literal_node.type_id, expected_type)) {
-    throw std::runtime_error("Type mismatch in literal node. Expected type "
-                             "is not correspond to literal type.");
-  }
-
-  if (expected_type != tp::no_type_id &&
-      !type_store_.unify(expected_type, literal_node.type_id)) {
     throw std::runtime_error("Type mismatch in literal node. Expected type "
                              "is not correspond to literal type.");
   }
