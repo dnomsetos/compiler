@@ -6,7 +6,7 @@
 void TypeChecker::visit(const ast::IdentifierNode& identifier) {
   if (identifier.type_id >= tp::basic_type_count) {
     std::cerr << "TypeChecker::visit: type_id out of range at " << identifier
-              << std::endl;
+              << "with val " << identifier.type_id << std::endl;
     throw std::runtime_error("TypeChecker::visit: type_id out of range");
   }
 
@@ -177,6 +177,8 @@ void TypeChecker::visit(const ast::StatementNode& statement) {
 
 void TypeChecker::visit(
     const ast::VariableDefinitionNode& variable_definition) {
+  visit(*variable_definition.name);
+
   if (variable_definition.value.has_value()) {
     visit(*variable_definition.value.value());
   }

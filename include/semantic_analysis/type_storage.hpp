@@ -32,25 +32,29 @@ public:
 
   tp::TypeId new_literal_type(tp::LiteralVariant&&);
 
+  tp::TypeId new_undefined_type();
+
   tp::TypeId get_basic_type(tp::BasicTypeVariant);
 
-  tp::TypeId resolve(tp::TypeId type_id) const;
+  tp::TypeId resolve(tp::TypeId type_id);
 
-  bool unify(tp::TypeId type1, tp::TypeId type2) const;
+  bool unify(tp::TypeId type1, tp::TypeId type2);
 
-  const tp::Type& get_type(tp::TypeId type_id) const;
+  const tp::Type& get_type(tp::TypeId type_id);
 
   void add_ast_type(ast::ASTTypeNode* ast_type);
 
   void add_ast_var(ast::IdentifierNode* ast_var);
 
-  bool is_integer_type(tp::TypeId type_id) const;
+  bool is_integer_type(tp::TypeId type_id);
 
-  bool is_float_type(tp::TypeId type_id) const;
+  bool is_float_type(tp::TypeId type_id);
 
   void handle_ast_types();
 
 private:
+  tp::Type& get_mutable_type(tp::TypeId type_id);
+
   // key is index in BasicTypeVariant
   using container_type_t = std::array<tp::Type, tp::basic_type_count>;
 

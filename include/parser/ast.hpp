@@ -4,7 +4,6 @@
 #include <vector>
 
 #include <scanner/token.hpp>
-#include <semantic_analysis/types.hpp>
 #include <utility/allocator.hpp>
 #include <utility/storage.hpp>
 #include <utility/type_tuple.hpp>
@@ -19,6 +18,7 @@ namespace tp {
 
 using TypeId = std::size_t;
 
+inline constexpr TypeId no_type_id = -1;
 
 } // namespace tp
 

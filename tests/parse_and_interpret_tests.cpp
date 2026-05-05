@@ -15,7 +15,8 @@
   "simple", "different_types", "if_expression", "if_elif_statement",           \
       "big_expression", "simple_cast", "simple_block_expression",              \
       "big_block_expression", "loop_expression", "loop_labels",                \
-      "function_in_function", "mini_program", "strange_situation"
+      "function_in_function", "mini_program", "strange_situation",             \
+      "declarations_without_definitions"
 
 const std::string code_filename = "/code.txt";
 const std::string ast_filename = "/ast.txt";

@@ -15,6 +15,11 @@ std::ostream& operator<<(std::ostream& out, const FloatLiteral&) {
 //   return out;
 // }
 
+std::ostream& operator<<(std::ostream& out, const UndefinedType&) {
+  out << "UndefinedType" << std::endl;
+  return out;
+}
+
 FunctionType::FunctionType(std::vector<TypeId> args, TypeId return_type)
     : args(std::move(args)), return_type(return_type) {}
 
@@ -28,6 +33,18 @@ std::ostream& operator<<(std::ostream& out, const NoType&) {
   return out;
 }
 
+StrangeTypeVariant narrow_down(const TypeVariant& type) {
+  return std::visit(
+      [](auto&& val) -> StrangeTypeVariant {
+        using T = std::decay_t<decltype(val)>;
+        if constexpr (is_in_type_tuple_v<T, StrangeTypeTuple>) {
+          return val;
+        }
+        throw std::runtime_error("Unexpected basic type in narrow_down");
+      },
+      type);
+}
+
 Type::Type() : type{NoType{}} {}
 
 Type::Type(BasicTypeVariant variant)
@@ -37,6 +54,10 @@ Type::Type(FunctionType&& type) : type{std::move(type)} {}
 
 Type::Type(LiteralVariant&& type)
     : type{std::visit([](auto&& val) -> TypeVariant { return val; }, type)} {}
+
+Type::Type(UndefinedType&& type) : type{std::move(type)} {}
+
+bool is_basic_type(TypeId type_id) { return type_id < basic_type_count; }
 
 std::optional<BasicTypeVariant> get_type(const std::string& name) {
   auto it =

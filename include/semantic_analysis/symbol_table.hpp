@@ -19,6 +19,7 @@ struct Symbol {
   tp::TypeId type;
   SymbolTable* scope;
   ast::FunctionDefinitionNode* definition;
+  bool is_defined = false;
 };
 
 class SymbolTable {
@@ -48,9 +49,16 @@ public:
 
   friend GlobalSymbolTable;
 
+  auto get_variable_symbol_maybe_undefined(const std::string& name) const
+      -> const Symbol*;
+
   auto get_variable_symbol(const std::string& name) const -> const Symbol*;
 
   auto get_function_symbol(const std::string& name) const -> const Symbol*;
+
+  auto get_variable_symbol_in_position_maybe_undefined(
+      const std::string& name, const tkn::Position& position) const
+      -> const Symbol*;
 
   auto get_variable_symbol_in_position(const std::string& name,
                                        const tkn::Position& position) const
@@ -84,6 +92,8 @@ public:
   SymbolTable* find_loop_by_label(const std::string& label);
 
   void change_symbol_type(const std::string& name, tp::TypeId type);
+
+  void define_symbol(const std::string& name);
 
 private:
   std::size_t index_;

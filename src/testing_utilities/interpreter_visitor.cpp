@@ -28,48 +28,48 @@ InterpreterVisitor::operator()(const ast::IdentifierNode& identifier) {
         value_tables_.at(scope).contains(identifier.identifier->name)) {
       auto& value = value_tables_.at(scope).at(identifier.identifier->name);
 
-      bool is_corrent_type = std::visit(
-          [&name = identifier.identifier->name](auto&& val, auto&& type) {
-            using expected_type = std::decay_t<decltype(type)>;
-            using val_type = std::decay_t<decltype(val)>;
-
-            if constexpr (requires {
-                            typename expected_type::interpret_type;
-                          }) {
-              if constexpr (!std::is_same_v<
-                                typename expected_type::interpret_type,
-                                val_type>) {
-                return false;
-              }
-              return true;
-            }
-
-            return false;
-          },
-          value,
-          type_store_.get_type(type_store_.resolve(identifier.type_id)).type);
-
-      if (is_corrent_type) {
-        return value;
-      } else {
-        std::cerr << value.index() << std::endl;
-        std::cerr << "incorrent type in variable "
-                  << identifier.identifier->name << " at position "
-                  << identifier << std::endl;
-
-        std::cerr << "Identifier type id: " << identifier.type_id << std::endl;
-        std::cerr << "Resolved type id: "
-                  << type_store_.resolve(identifier.type_id) << std::endl;
-
-        std::visit([](auto&& type) { std::cerr << type << std::endl; },
-                   type_store_.get_type(identifier.type_id).type);
-
-        std::visit(
-            [](auto&& type) { std::cerr << type << std::endl; },
-            type_store_.get_type(type_store_.resolve(identifier.type_id)).type);
-
-        throw std::runtime_error("incorrent type");
-      }
+      // bool is_corrent_type = std::visit(
+      //     [&name = identifier.identifier->name](auto&& val, auto&& type) {
+      //       using expected_type = std::decay_t<decltype(type)>;
+      //       using val_type = std::decay_t<decltype(val)>;
+      //
+      //       if constexpr (requires {
+      //                       typename expected_type::interpret_type;
+      //                     }) {
+      //         if constexpr (!std::is_same_v<
+      //                           typename expected_type::interpret_type,
+      //                           val_type>) {
+      //           return false;
+      //         }
+      //         return true;
+      //       }
+      //
+      //       return false;
+      //     },
+      //     value,
+      //     type_store_.get_type(type_store_.resolve(identifier.type_id)).type);
+      //
+      // if (is_corrent_type) {
+      return value;
+      // } else {
+      //   std::cerr << value.index() << std::endl;
+      //   std::cerr << "incorrent type in variable "
+      //             << identifier.identifier->name << " at position "
+      //             << identifier << std::endl;
+      //
+      //   std::cerr << "Identifier type id: " << identifier.type_id <<
+      //   std::endl; std::cerr << "Resolved type id: "
+      //             << type_store_.resolve(identifier.type_id) << std::endl;
+      //
+      //   std::visit([](auto&& type) { std::cerr << type << std::endl; },
+      //              type_store_.get_type(identifier.type_id).type);
+      //
+      //   std::visit(
+      //       [](auto&& type) { std::cerr << type << std::endl; },
+      //       type_store_.get_type(type_store_.resolve(identifier.type_id)).type);
+      //
+      //   throw std::runtime_error("incorrent type");
+      // }
     } else {
       scope = scope->get_parent();
     }
@@ -521,6 +521,29 @@ InterpreterVisitor::operator()(const ast::VariableDefinitionNode& var_def) {
   }
 
   if (!var_def.type.has_value()) {
+    if (!var_def.value.has_value()) {
+
+      auto& type = type_store_.get_type(var_def.name->type_id);
+
+      std::visit(
+          [&](auto&& type) {
+            using T = std::decay_t<decltype(type)>;
+
+            if constexpr (!is_in_type_tuple_v<T, tp::StrangeTypeTuple> &&
+                          !std::is_same_v<T, tp::NoType>) {
+              using interpret_type = typename T::interpret_type;
+
+              value_tables_.at(current_table)
+                  .emplace(var_def.name->identifier->name, interpret_type{});
+            } else {
+              throw std::runtime_error(
+                  "Only basic types can have value in runtime");
+            }
+          },
+          type.type);
+
+      return Dummy{};
+    }
     auto value = operator()(*var_def.value.value());
     if (check_interrupt()) {
       return Dummy{};

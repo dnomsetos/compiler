@@ -1,0 +1,216 @@
+function definition: 
+  name: main
+  argument list is empty
+  return type is void
+  body: 
+    statement: 
+      variable definition: 
+        name: x
+    statement: 
+      variable definition: 
+        name: z
+    statement: 
+      variable definition: 
+        name: y
+        value: 
+        expression: 
+          logical or: 
+            logical and: 
+              comparison: 
+                bitwise or: 
+                  bitwise xor: 
+                    bitwise and: 
+                      shift: 
+                        addition: 
+                          multiplication: 
+                            cast: 
+                              unary: 
+                                primary: 
+                                  literal: 34
+    statement: 
+      if expression: 
+        if condition: 
+          expression: 
+            logical or: 
+              logical and: 
+                comparison: 
+                  bitwise or: 
+                    bitwise xor: 
+                      bitwise and: 
+                        shift: 
+                          addition: 
+                            multiplication: 
+                              cast: 
+                                unary: 
+                                  primary: 
+                                    identifier: y
+                  binary operation: >
+                  bitwise or: 
+                    bitwise xor: 
+                      bitwise and: 
+                        shift: 
+                          addition: 
+                            multiplication: 
+                              cast: 
+                                unary: 
+                                  primary: 
+                                    literal: 10
+        if body: 
+          block expression: 
+            statement: 
+              expression: 
+                assignment: 
+                  identifier: x
+                  assigned value: 
+                    expression: 
+                      logical or: 
+                        logical and: 
+                          comparison: 
+                            bitwise or: 
+                              bitwise xor: 
+                                bitwise and: 
+                                  shift: 
+                                    addition: 
+                                      multiplication: 
+                                        cast: 
+                                          unary: 
+                                            primary: 
+                                              literal: 10
+        else body: 
+          block expression: 
+            statement: 
+              expression: 
+                assignment: 
+                  identifier: x
+                  assigned value: 
+                    expression: 
+                      logical or: 
+                        logical and: 
+                          comparison: 
+                            bitwise or: 
+                              bitwise xor: 
+                                bitwise and: 
+                                  shift: 
+                                    addition: 
+                                      multiplication: 
+                                        cast: 
+                                          unary: 
+                                            primary: 
+                                              identifier: y
+    statement: 
+      expression: 
+        assignment: 
+          identifier: z
+          assigned value: 
+            expression: 
+              logical or: 
+                logical and: 
+                  comparison: 
+                    bitwise or: 
+                      bitwise xor: 
+                        bitwise and: 
+                          shift: 
+                            addition: 
+                              multiplication: 
+                                cast: 
+                                  unary: 
+                                    primary: 
+                                      identifier: x
+                                  to type: 
+                                    identifier: i8
+                              binary operation: +
+                              multiplication: 
+                                cast: 
+                                  unary: 
+                                    primary: 
+                                      identifier: y
+    statement: 
+      expression: 
+        logical or: 
+          logical and: 
+            comparison: 
+              bitwise or: 
+                bitwise xor: 
+                  bitwise and: 
+                    shift: 
+                      addition: 
+                        multiplication: 
+                          cast: 
+                            unary: 
+                              primary: 
+                                call function: print_i8
+                                with arguments:
+                                  expression: 
+                                    logical or: 
+                                      logical and: 
+                                        comparison: 
+                                          bitwise or: 
+                                            bitwise xor: 
+                                              bitwise and: 
+                                                shift: 
+                                                  addition: 
+                                                    multiplication: 
+                                                      cast: 
+                                                        unary: 
+                                                          primary: 
+                                                            identifier: z
+    statement: 
+      expression: 
+        logical or: 
+          logical and: 
+            comparison: 
+              bitwise or: 
+                bitwise xor: 
+                  bitwise and: 
+                    shift: 
+                      addition: 
+                        multiplication: 
+                          cast: 
+                            unary: 
+                              primary: 
+                                call function: print_i8
+                                with arguments:
+                                  expression: 
+                                    logical or: 
+                                      logical and: 
+                                        comparison: 
+                                          bitwise or: 
+                                            bitwise xor: 
+                                              bitwise and: 
+                                                shift: 
+                                                  addition: 
+                                                    multiplication: 
+                                                      cast: 
+                                                        unary: 
+                                                          primary: 
+                                                            identifier: y
+    statement: 
+      expression: 
+        logical or: 
+          logical and: 
+            comparison: 
+              bitwise or: 
+                bitwise xor: 
+                  bitwise and: 
+                    shift: 
+                      addition: 
+                        multiplication: 
+                          cast: 
+                            unary: 
+                              primary: 
+                                call function: print_i8
+                                with arguments:
+                                  expression: 
+                                    logical or: 
+                                      logical and: 
+                                        comparison: 
+                                          bitwise or: 
+                                            bitwise xor: 
+                                              bitwise and: 
+                                                shift: 
+                                                  addition: 
+                                                    multiplication: 
+                                                      cast: 
+                                                        unary: 
+                                                          primary: 
+                                                            identifier: x

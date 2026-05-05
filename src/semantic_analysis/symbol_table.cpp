@@ -15,9 +15,28 @@ bool SymbolTable::insert_function(const std::string& name, Symbol&& symbol) {
   return function_symbols_.emplace(name, symbol).second;
 }
 
+auto SymbolTable::get_variable_symbol_maybe_undefined(
+    const std::string& name) const -> const Symbol* {
+  if (variable_symbols_.contains(name)) {
+    return &variable_symbols_.at(name);
+  }
+
+  if (parent_ == nullptr) {
+    throw std::runtime_error("variable " + name + " is not defined");
+  }
+
+  return parent_->get_variable_symbol_maybe_undefined(name);
+}
+
 auto SymbolTable::get_variable_symbol(const std::string& name) const
     -> const Symbol* {
   if (variable_symbols_.contains(name)) {
+    if (!variable_symbols_.at(name).is_defined) {
+      throw std::runtime_error(
+          "variable " + name + " is declared but is not defined at " +
+          std::to_string(variable_symbols_.at(name).position.start.line) + ":" +
+          std::to_string(variable_symbols_.at(name).position.start.offset));
+    }
     return &variable_symbols_.at(name);
   }
 
@@ -41,10 +60,26 @@ auto SymbolTable::get_function_symbol(const std::string& name) const
   return parent_->get_function_symbol(name);
 }
 
+auto SymbolTable::get_variable_symbol_in_position_maybe_undefined(
+    const std::string& name, const tkn::Position& position) const
+    -> const Symbol* {
+
+  auto* result = get_variable_symbol_maybe_undefined(name);
+
+  if (position.start.line < result->position.start.line ||
+      (position.start.line == result->position.start.line &&
+       position.start.offset < result->position.start.offset)) {
+    throw std::runtime_error("variable " + name + " is not defined in line " +
+                             std::to_string(position.start.line));
+  }
+  return result;
+}
 auto SymbolTable::get_variable_symbol_in_position(
     const std::string& name, const tkn::Position& position) const
     -> const Symbol* {
+
   auto* result = get_variable_symbol(name);
+
   if (position.start.line < result->position.start.line ||
       (position.start.line == result->position.start.line &&
        position.start.offset < result->position.start.offset)) {
@@ -165,6 +200,19 @@ void SymbolTable::change_symbol_type(const std::string& name, tp::TypeId type) {
     throw std::runtime_error("Unknown name " + name);
   }
   parent_->change_symbol_type(name, type);
+}
+
+void SymbolTable::define_symbol(const std::string& name) {
+  if (variable_symbols_.contains(name)) {
+    variable_symbols_.at(name).is_defined = true;
+    return;
+  }
+
+  if (parent_ == nullptr) {
+    throw std::runtime_error("Unknown name " + name);
+  }
+
+  parent_->define_symbol(name);
 }
 
 GlobalSymbolTable::GlobalSymbolTable(TypeStore& type_store) : root_{} {

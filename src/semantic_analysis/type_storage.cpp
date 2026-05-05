@@ -38,7 +38,15 @@ tp::TypeId TypeStore::new_literal_type(tp::LiteralVariant&& literal) {
   return type_id;
 }
 
-tp::TypeId TypeStore::resolve(tp::TypeId type_id) const {
+tp::TypeId TypeStore::new_undefined_type() {
+  tp::TypeId type_id = types_.size() + basic_types_.size();
+
+  types_.emplace_back(tp::UndefinedType{});
+
+  return type_id;
+}
+
+tp::TypeId TypeStore::resolve(tp::TypeId type_id) {
   if (type_id == tp::no_type_id) {
     throw std::runtime_error("Call TypeStore::resolve with not_type_id");
   }
@@ -51,8 +59,7 @@ tp::TypeId TypeStore::resolve(tp::TypeId type_id) const {
       [&](auto&& val) -> tp::TypeId {
         using val_type = std::decay_t<decltype(val)>;
 
-        if constexpr (!std::is_same_v<val_type, tp::IntLiteral> ||
-                      !std::is_same_v<val_type, tp::FloatLiteral>) {
+        if constexpr (std::is_same_v<val_type, tp::FunctionType>) {
           return type_id;
         } else {
           if (val.parent == tp::no_type_id) {
@@ -66,10 +73,10 @@ tp::TypeId TypeStore::resolve(tp::TypeId type_id) const {
           return root;
         }
       },
-      types_.at(type_id - basic_types_.size()).type);
+      tp::narrow_down(types_.at(type_id - basic_types_.size()).type));
 }
 
-bool TypeStore::unify(tp::TypeId type1, tp::TypeId type2) const {
+bool TypeStore::unify(tp::TypeId type1, tp::TypeId type2) {
   if (type1 == tp::no_type_id || type2 == tp::no_type_id) {
     std::cerr << "Call TypeStore::unify with not_type_id: " << type1 << " "
               << type2 << std::endl;
@@ -83,36 +90,72 @@ bool TypeStore::unify(tp::TypeId type1, tp::TypeId type2) const {
     return true;
   }
 
-  auto& type1_type = root1 < basic_types_.size()
-                         ? basic_types_.at(root1)
-                         : types_.at(root1 - basic_types_.size());
-  auto& type2_type = root2 < basic_types_.size()
-                         ? basic_types_.at(root2)
-                         : types_.at(root2 - basic_types_.size());
+  overloaded body{[&](tp::IntLiteral& literal) {
+                    if (is_integer_type(root1)) {
+                      literal.parent = root1;
+                      return true;
+                    }
+                    return false;
+                  },
 
-  return std::visit(
-      [&](auto&& type1, auto&& type2) -> bool {
-        using T1 = std::decay_t<decltype(type1)>;
-        using T2 = std::decay_t<decltype(type2)>;
+                  [&](tp::FloatLiteral& literal) {
+                    if (is_float_type(root1)) {
+                      literal.parent = root1;
+                      return true;
+                    }
+                    return false;
+                  },
 
-        if constexpr (std::is_same_v<T1, tp::IntLiteral> ||
-                      std::is_same_v<T1, tp::FloatLiteral>) {
-          const_cast<T1&>(type1).parent = root2;
+                  [&](tp::UndefinedType& undefined) {
+                    undefined.parent = root1;
+                    return true;
+                  },
 
-          return true;
-        } else if constexpr (std::is_same_v<T2, tp::IntLiteral> ||
-                             std::is_same_v<T2, tp::FloatLiteral>) {
-          const_cast<T2&>(type2).parent = root1;
+                  [&](auto&) { return root1 == root2; }};
 
-          return true;
-        } else {
-          return false;
-        }
-      },
-      type1_type.type, type2_type.type);
+  if (tp::is_basic_type(root1)) {
+    if (tp::is_basic_type(root2)) {
+      return root1 == root2;
+    } else {
+      return std::visit(body, get_mutable_type(root2).type);
+    }
+  } else {
+    if (tp::is_basic_type(root2)) {
+      std::swap(root1, root2);
+      return std::visit(body, get_mutable_type(root2).type);
+    } else {
+      return std::visit(
+          [&](auto&& type1, auto&& type2) -> bool {
+            using T1 = std::decay_t<decltype(type1)>;
+            using T2 = std::decay_t<decltype(type2)>;
+
+            if constexpr (is_in_type_tuple_v<T1, tp::StrangeTypeTuple> &&
+                          is_in_type_tuple_v<T2, tp::StrangeTypeTuple>) {
+              if constexpr (std::is_same_v<T1, tp::UndefinedType>) {
+                type1.parent = root2;
+                return true;
+              } else if constexpr (std::is_same_v<T2, tp::UndefinedType>) {
+                type2.parent = root1;
+                return true;
+              } else if constexpr (std::is_same_v<T1, T2>) {
+                if constexpr (std::is_same_v<T1, tp::FunctionType>) {
+                  return root1 == root2;
+                } else {
+                  type1.parent = root2;
+                  return true;
+                }
+              }
+              return false;
+            }
+
+            throw std::logic_error("Unreachable");
+          },
+          get_mutable_type(root1).type, get_mutable_type(root2).type);
+    }
+  }
 }
 
-const tp::Type& TypeStore::get_type(tp::TypeId type_id) const {
+const tp::Type& TypeStore::get_type(tp::TypeId type_id) {
   if (type_id == tp::no_type_id) {
     throw std::runtime_error("Call TypeStore::get_type with not_type_id");
   }
@@ -134,7 +177,7 @@ void TypeStore::add_ast_var(ast::IdentifierNode* ast_var) {
   ast_vars_.push_back(ast_var);
 }
 
-bool TypeStore::is_integer_type(tp::TypeId type_id) const {
+bool TypeStore::is_integer_type(tp::TypeId type_id) {
   if (type_id == tp::no_type_id) {
     return false;
   }
@@ -149,7 +192,7 @@ bool TypeStore::is_integer_type(tp::TypeId type_id) const {
       get_type(type_id).type);
 }
 
-bool TypeStore::is_float_type(tp::TypeId type_id) const {
+bool TypeStore::is_float_type(tp::TypeId type_id) {
   if (type_id == tp::no_type_id) {
     return false;
   }
@@ -168,8 +211,15 @@ void TypeStore::handle_ast_types() {
   for (auto* node : ast_vars_) {
     tp::TypeId root = resolve(node->type_id);
 
+    // std::cout << "handle: " << *node << std::endl;
+
+    SymbolTable* current_scope = node->table;
+
     if (root < basic_types_.size()) {
       node->type_id = root;
+
+      current_scope->change_symbol_type(node->identifier->name, node->type_id);
+
       continue;
     }
 
@@ -183,11 +233,7 @@ void TypeStore::handle_ast_types() {
       throw std::runtime_error("Strange type");
     }
 
-    SymbolTable* current_scope = node->table;
-
-    // std::cout << "here1" << std::endl;
     current_scope->change_symbol_type(node->identifier->name, node->type_id);
-    // std::cout << "here2" << std::endl;
   }
 
   for (auto* node : ast_types_) {
@@ -204,8 +250,16 @@ void TypeStore::handle_ast_types() {
       node->type_id = get_basic_type(tp::I32{});
     } else if (std::holds_alternative<tp::FloatLiteral>(type_variant)) {
       node->type_id = get_basic_type(tp::F32{});
-    } else {
+    } else if (std::holds_alternative<tp::UndefinedType>(type_variant)) {
       throw std::runtime_error("Strange type");
     }
   }
+}
+
+tp::Type& TypeStore::get_mutable_type(tp::TypeId type_id) {
+  if (type_id < tp::basic_type_count) {
+    throw std::runtime_error(
+        "Call TypeStore::get_mutable_type with basic type");
+  }
+  return types_.at(type_id - tp::basic_type_count);
 }

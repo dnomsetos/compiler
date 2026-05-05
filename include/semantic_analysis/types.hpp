@@ -17,8 +17,6 @@ namespace tp {
 
 using TypeId = std::size_t;
 
-inline constexpr TypeId no_type_id = -1;
-
 #define GENERATE_TYPE(name, type)                                              \
   struct name {                                                                \
     using interpret_type = type;                                               \
@@ -90,6 +88,12 @@ using BasicTypeVariant = type_tuple_to_variant_t<BasicTypeTypeTuple>;
 
 // std::ostream& operator<<(std::ostream& out, const VariableType&);
 
+struct UndefinedType {
+  TypeId parent = tp::no_type_id;
+};
+
+std::ostream& operator<<(std::ostream& out, const UndefinedType&);
+
 struct FunctionType {
   std::vector<TypeId> args;
   TypeId return_type;
@@ -107,10 +111,18 @@ std::ostream& operator<<(std::ostream& out, const NoType&);
 
 static_assert(type_tuple_size_v<BasicTypeTypeTuple> == 13);
 
-using TypeTypeTuple = Concat<BasicTypeTypeTuple, LiteralTypeTuple,
-                             TypeTuple<FunctionType, NoType>>::type;
+using TypeTypeTuple =
+    Concat<BasicTypeTypeTuple, LiteralTypeTuple,
+           TypeTuple<FunctionType, UndefinedType, NoType>>::type;
 
 using TypeVariant = type_tuple_to_variant_t<TypeTypeTuple>;
+
+using StrangeTypeTuple =
+    Concat<LiteralTypeTuple, TypeTuple<FunctionType, UndefinedType>>::type;
+
+using StrangeTypeVariant = type_tuple_to_variant_t<StrangeTypeTuple>;
+
+StrangeTypeVariant narrow_down(const TypeVariant& type);
 
 struct Type {
   Type();
@@ -120,6 +132,8 @@ struct Type {
   Type(FunctionType&& type);
 
   Type(LiteralVariant&& type);
+
+  Type(UndefinedType&& type);
 
   TypeVariant type;
 };
@@ -133,6 +147,8 @@ inline constexpr std::pair<const char*, BasicTypeVariant> basic_type_names[] = {
 };
 
 constexpr std::size_t basic_type_count = std::size(basic_type_names);
+
+bool is_basic_type(TypeId type_id);
 
 std::optional<BasicTypeVariant> get_type(const std::string& name);
 
