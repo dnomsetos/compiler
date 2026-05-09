@@ -84,8 +84,8 @@ void read_float_or_int_literal(const std::string& code, std::size_t& i,
         tkn::FloatLiteral{
             .value = value + value2 / std::pow(10, new_i2 - new_i - 1),
         },
-        tkn::Position{
-            current_position.line, current_position.offset, new_i2 + 1 - i});
+        tkn::Position{current_position.line, current_position.offset,
+                      new_i2 + 1 - i});
 
     current_position.offset += new_i2 - i;
     i = new_i2;
@@ -96,8 +96,8 @@ void read_float_or_int_literal(const std::string& code, std::size_t& i,
       tkn::IntLiteral{
           .value = value,
       },
-      tkn::Position{
-          current_position.line, current_position.offset, new_i + 1 - i});
+      tkn::Position{current_position.line, current_position.offset,
+                    new_i + 1 - i});
 
   current_position.offset += new_i - i;
   i = new_i;
@@ -118,26 +118,26 @@ void read_identifier_or_keyword(const std::string& code, std::size_t& i,
 
   if (it != std::end(keyword_table)) {
     if (std::holds_alternative<tkn::True>(it->second)) {
-      tokens.emplace_back(
-          tkn::BoolLiteral{.value = true},
-          tkn::Position{
-              current_position.line, current_position.offset, new_i + 1 - i});
+      tokens.emplace_back(tkn::BoolLiteral{.value = true},
+                          tkn::Position{current_position.line,
+                                        current_position.offset,
+                                        new_i + 1 - i});
       current_position.offset += new_i - i;
       i = new_i;
       return;
     } else if (std::holds_alternative<tkn::False>(it->second)) {
-      tokens.emplace_back(
-          tkn::BoolLiteral{.value = false},
-          tkn::Position{
-              current_position.line, current_position.offset, new_i + 1 - i});
+      tokens.emplace_back(tkn::BoolLiteral{.value = false},
+                          tkn::Position{current_position.line,
+                                        current_position.offset,
+                                        new_i + 1 - i});
       current_position.offset += new_i - i;
       i = new_i;
       return;
     }
 
-    tokens.emplace_back(
-        it->second, tkn::Position{current_position.line,
-                                  current_position.offset, new_i + 1 - i});
+    tokens.emplace_back(it->second,
+                        tkn::Position{current_position.line,
+                                      current_position.offset, new_i + 1 - i});
 
     current_position.offset += new_i - i;
     i = new_i;
@@ -147,8 +147,8 @@ void read_identifier_or_keyword(const std::string& code, std::size_t& i,
       tkn::Identifier{
           .name = name,
       },
-      tkn::Position{
-          current_position.line, current_position.offset, new_i + 1 - i});
+      tkn::Position{current_position.line, current_position.offset,
+                    new_i + 1 - i});
   current_position.offset += new_i - i;
   i = new_i;
 }
@@ -170,8 +170,8 @@ void read_string_literal(const std::string& code, std::size_t& i,
       tkn::StringLiteral{
           .value = name,
       },
-      tkn::Position{
-          current_position.line, current_position.offset, new_i + 2 - i});
+      tkn::Position{current_position.line, current_position.offset,
+                    new_i + 2 - i});
 
   current_position.offset += new_i + 1 - i;
   i = new_i + 1;
@@ -202,9 +202,9 @@ void read_language_symbol(const std::string& code, std::size_t& i,
   }
 
   std::size_t token_size = std::strlen(it->first);
-  tokens.emplace_back(
-      it->second, tkn::Position{current_position.line, current_position.offset,
-                                token_size});
+  tokens.emplace_back(it->second,
+                      tkn::Position{current_position.line,
+                                    current_position.offset, token_size});
   i += token_size - 1;
   current_position.offset += token_size - 1;
 }

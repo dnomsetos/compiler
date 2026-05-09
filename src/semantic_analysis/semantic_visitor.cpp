@@ -22,6 +22,10 @@ void SemanticVisitor::visit(ast::VariableDefinitionNode& variable_definition) {
 
   bool is_defined = false;
 
+  if (symbol_table_->get_parent() == nullptr) {
+    variable_definition.is_global = true;
+  }
+
   if (variable_definition.type.has_value()) {
     auto optional_type =
         tp::get_type(variable_definition.type.value()->identifier->name);
@@ -58,8 +62,8 @@ void SemanticVisitor::visit(ast::VariableDefinitionNode& variable_definition) {
       type_store_.add_ast_var(&*variable_definition.name);
     }
 
-    if (!type_store_.unify(
-            variable_definition.value.value()->type_id, declared_type)) {
+    if (!type_store_.unify(variable_definition.value.value()->type_id,
+                           declared_type)) {
       throw std::runtime_error("Type mismatch in variable definition. Variable "
                                "is initialized with wrong type.");
     }
@@ -80,8 +84,8 @@ void SemanticVisitor::visit(ast::VariableDefinitionNode& variable_definition) {
       .is_defined = is_defined,
   };
 
-  symbol_table_->insert_variable(
-      variable_definition.name->identifier->name, std::move(symbol));
+  symbol_table_->insert_variable(variable_definition.name->identifier->name,
+                                 std::move(symbol));
 
   variable_definition.name->table = symbol_table_;
   variable_definition.name->type_id = declared_type;
@@ -117,6 +121,7 @@ void SemanticVisitor::visit(ast::FunctionDefinitionNode& function_definition) {
   std::vector<tp::TypeId> args;
 
   for (auto& [arg_name, arg_type] : function_definition.argument_list) {
+    // std::cout << "here" << std::endl;
     auto optional_type = tp::get_type(arg_type.identifier->name);
 
     if (!optional_type.has_value()) {
@@ -136,11 +141,13 @@ void SemanticVisitor::visit(ast::FunctionDefinitionNode& function_definition) {
     arg_name.table = symbol_table_;
     arg_name.type_id = arg_type_id;
 
-    symbol_table_->insert_variable(
-        arg_name.identifier->name, std::move(symbol));
+    symbol_table_->insert_variable(arg_name.identifier->name,
+                                   std::move(symbol));
 
     args.push_back(type_store_.get_basic_type(optional_type.value()));
   }
+
+  // std::cout << "args size: " << args.size() << std::endl;
 
   tp::TypeId function_type =
       type_store_.get_function(return_type, std::move(args));
@@ -152,8 +159,8 @@ void SemanticVisitor::visit(ast::FunctionDefinitionNode& function_definition) {
       .definition = &function_definition,
   };
 
-  current_scope->insert_function(
-      function_definition.name->identifier->name, std::move(symbol));
+  current_scope->insert_function(function_definition.name->identifier->name,
+                                 std::move(symbol));
 
   function_definition.body->table = symbol_table_;
 
@@ -384,8 +391,8 @@ void SemanticVisitor::visit(ast::LoopExpressionNode& loop,
 
   SymbolTable* current_scope = symbol_table_;
   if (loop.label.has_value()) {
-    symbol_table_ = symbol_table_->create_loop_child(
-        loop.label.value().name, expected_type);
+    symbol_table_ = symbol_table_->create_loop_child(loop.label.value().name,
+                                                     expected_type);
   } else {
     symbol_table_ = symbol_table_->create_loop_child(expected_type);
   }
@@ -422,8 +429,8 @@ void SemanticVisitor::visit(ast::AssignmentNode& assignment,
   assignment.type_id = type_store_.get_basic_type(tp::Void{});
 
   if (expected_type != tp::no_type_id &&
-      !type_store_.unify(
-          expected_type, type_store_.get_basic_type(tp::Void{}))) {
+      !type_store_.unify(expected_type,
+                         type_store_.get_basic_type(tp::Void{}))) {
     throw std::runtime_error("Type mismatch. Expected non void in assignment.");
   }
 
@@ -445,8 +452,8 @@ void SemanticVisitor::visit(ast::AssignmentNode& assignment,
             "Type mismatch in assignment. Expected type mismatch real type.");
       }
 
-      symbol_table_->change_symbol_type(
-          assignment.left->identifier->name, assignment.right->type_id);
+      symbol_table_->change_symbol_type(assignment.left->identifier->name,
+                                        assignment.right->type_id);
 
       type_store_.add_ast_var(&*assignment.left);
 
@@ -561,8 +568,8 @@ template <typename LogicalNode>
 void SemanticVisitor::visit(LogicalNode& logical_node,
                             tp::TypeId expected_type) {
   if (!logical_node.right.empty() && expected_type != tp::no_type_id &&
-      !type_store_.unify(
-          expected_type, type_store_.get_basic_type(tp::Bool{}))) {
+      !type_store_.unify(expected_type,
+                         type_store_.get_basic_type(tp::Bool{}))) {
     throw std::runtime_error(
         "Type mismatch in logical node. Expected type is not bool.");
   }
@@ -578,8 +585,8 @@ void SemanticVisitor::visit(LogicalNode& logical_node,
 void SemanticVisitor::visit(ast::ComparisonNode& comparison_node,
                             tp::TypeId expected_type) {
   if (!comparison_node.right.empty() && expected_type != tp::no_type_id &&
-      !type_store_.unify(
-          expected_type, type_store_.get_basic_type(tp::Bool{}))) {
+      !type_store_.unify(expected_type,
+                         type_store_.get_basic_type(tp::Bool{}))) {
     throw std::runtime_error(
         "Type mismatch in comparison node. Expected type is not bool.");
   }

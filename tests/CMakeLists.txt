@@ -29,6 +29,7 @@ target_link_libraries(tests
     PRIVATE
         compiler_headers
         GTest::gtest_main
+        ${LLVM_LIBS}
 )
 
 target_link_options(tests

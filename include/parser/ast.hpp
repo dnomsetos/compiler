@@ -204,6 +204,7 @@ struct VariableDefinitionNode : ASTNode {
   alloc::pmr_unique_ptr<IdentifierNode> name;
   std::optional<alloc::pmr_unique_ptr<IdentifierNode>> type;
   std::optional<alloc::pmr_unique_ptr<ExpressionNode>> value;
+  bool is_global;
 
   VariableDefinitionNode(alloc::pmr_unique_ptr<IdentifierNode>&& name,
                          const tkn::Position& position);

@@ -98,7 +98,7 @@ struct FunctionType {
   std::vector<TypeId> args;
   TypeId return_type;
 
-  FunctionType(std::vector<TypeId> args, TypeId return_type);
+  FunctionType(std::vector<TypeId>&& args, TypeId return_type);
 
   bool operator==(const FunctionType& other) const = default;
 };
@@ -134,6 +134,8 @@ struct Type {
   Type(LiteralVariant&& type);
 
   Type(UndefinedType&& type);
+
+  Type(const FunctionType& type);
 
   TypeVariant type;
 };
