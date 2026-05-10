@@ -1,3 +1,4 @@
+tests/test_files/helpers.o
 build/
 .cache/
 Testing/

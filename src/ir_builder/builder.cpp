@@ -16,6 +16,16 @@
 #include <llvm-22/llvm/Support/raw_os_ostream.h>
 #include <llvm-22/llvm/TargetParser/Host.h>
 
+inline llvm::AllocaInst* createAllocaAligned(llvm::IRBuilder<>& B,
+                                             llvm::Type* ty,
+                                             const llvm::Twine& name = "") {
+  const llvm::DataLayout& DL =
+      B.GetInsertBlock()->getParent()->getParent()->getDataLayout();
+  llvm::AllocaInst* alloca = B.CreateAlloca(ty, nullptr, name);
+  alloca->setAlignment(DL.getABITypeAlign(ty));
+  return alloca;
+}
+
 BuildVisitor::BuildVisitor(const std::string& module_name,
                            TypeStore& type_store)
     : module_(std::make_unique<llvm::Module>(module_name, context_)),
@@ -46,7 +56,6 @@ void BuildVisitor::prepare() {
 
 #undef DECL_FUNCTION
 
-  // print_void takes no arguments (void is not a valid parameter type in LLVM)
   llvm::FunctionType* _print_void =
       llvm::FunctionType::get(builder_.getVoidTy(), {}, false);
   functions_.insert(
@@ -91,18 +100,19 @@ void BuildVisitor::visit(
 
   builder_.SetInsertPoint(entry_block);
 
-  // Allocate stack slots for each argument and store the incoming value so
-  // that visit(IdentifierNode) can always do a load-from-pointer.
   for (auto&& [arg_val, arg_name] :
        std::views::zip(function->args(), function_definition.argument_list)) {
-    llvm::AllocaInst* slot = builder_.CreateAlloca(
-        arg_val.getType(), nullptr, arg_name.first.identifier->name);
+    llvm::AllocaInst* slot = createAllocaAligned(
+        builder_, arg_val.getType(), arg_name.first.identifier->name);
     builder_.CreateStore(&arg_val, slot);
     variables_names_.insert(
         {{arg_name.first.table, arg_name.first.identifier->name}, slot});
   }
 
   for (auto& statement : function_definition.body->statements) {
+    if (builder_.GetInsertBlock()->getTerminator()) {
+      break;
+    }
     visit(statement);
   }
 
@@ -112,7 +122,6 @@ void BuildVisitor::visit(
       builder_.CreateRet(current_value_);
     }
   } else {
-    // No explicit return value: emit ret void / ret {} only if needed.
     if (!builder_.GetInsertBlock()->getTerminator()) {
       llvm::Type* ret_type = function->getReturnType();
       if (ret_type->isVoidTy()) {
@@ -146,8 +155,8 @@ void BuildVisitor::visit(
 
   if (!variable_definition.is_global) {
     llvm::AllocaInst* var;
-    variables_names_.at(key) = var = builder_.CreateAlloca(
-        get_llvm_type(variable_definition.name->type_id), nullptr, var_name);
+    variables_names_.at(key) = var = createAllocaAligned(
+        builder_, get_llvm_type(variable_definition.name->type_id), var_name);
 
     if (variable_definition.value.has_value()) {
       visit(*variable_definition.value.value());
@@ -165,18 +174,17 @@ void BuildVisitor::visit(
     llvm::GlobalVariable* var;
 
     if (init_val == nullptr) {
-      var = new llvm::GlobalVariable(
-          get_llvm_type(variable_definition.name->type_id), false,
-          llvm::GlobalValue::ExternalLinkage, nullptr, var_name);
+      llvm::Type* ty = get_llvm_type(variable_definition.name->type_id);
+      llvm::Constant* zero = llvm::Constant::getNullValue(ty);
 
-      module_->insertGlobalVariable(var);
+      var = new llvm::GlobalVariable(*module_, ty, false,
+                                     llvm::GlobalValue::ExternalLinkage, zero,
+                                     var_name);
     } else if (llvm::Constant* const_val =
                    llvm::dyn_cast<llvm::Constant>(init_val)) {
       var = new llvm::GlobalVariable(
-          get_llvm_type(variable_definition.name->type_id), false,
+          *module_, get_llvm_type(variable_definition.name->type_id), false,
           llvm::GlobalValue::ExternalLinkage, const_val, var_name);
-
-      module_->insertGlobalVariable(var);
     } else {
       throw std::runtime_error("cannot init global variable");
     }
@@ -200,7 +208,7 @@ void BuildVisitor::visit(const ast::BreakStatementNode& break_stmt) {
     result = llvm::ConstantStruct::get(empty_tuple, {});
   }
 
-  LoopContext& loop = loop_stack_.back();
+  LoopContext* loop = &loop_stack_.back();
 
   if (break_stmt.label.has_value()) {
     bool found = false;
@@ -208,7 +216,7 @@ void BuildVisitor::visit(const ast::BreakStatementNode& break_stmt) {
     for (auto& loop_context : std::views::reverse(loop_stack_)) {
       if (loop_context.label.has_value() &&
           loop_context.label.value() == break_stmt.label.value().name) {
-        loop = loop_context;
+        loop = &loop_context;
         found = true;
         break;
       }
@@ -219,12 +227,12 @@ void BuildVisitor::visit(const ast::BreakStatementNode& break_stmt) {
     }
   }
 
-  builder_.CreateStore(result, loop.result);
-  builder_.CreateBr(loop.finish);
+  builder_.CreateStore(result, loop->result);
+  builder_.CreateBr(loop->finish);
 }
 
 void BuildVisitor::visit(const ast::ContinueStatementNode& continue_stmt) {
-  LoopContext& loop = loop_stack_.back();
+  LoopContext* loop = &loop_stack_.back();
 
   if (continue_stmt.label.has_value()) {
     bool found = false;
@@ -232,7 +240,7 @@ void BuildVisitor::visit(const ast::ContinueStatementNode& continue_stmt) {
     for (auto& loop_context : std::views::reverse(loop_stack_)) {
       if (loop_context.label.has_value() &&
           loop_context.label.value() == continue_stmt.label.value().name) {
-        loop = loop_context;
+        loop = &loop_context;
         found = true;
         break;
       }
@@ -243,7 +251,7 @@ void BuildVisitor::visit(const ast::ContinueStatementNode& continue_stmt) {
     }
   }
 
-  builder_.CreateBr(loop.body);
+  builder_.CreateBr(loop->body);
 }
 
 void BuildVisitor::visit(const ast::ReturnStatementNode& return_stmt) {
@@ -261,20 +269,27 @@ void BuildVisitor::visit(const ast::ExpressionNode& expression) {
 
 void BuildVisitor::visit(const ast::BlockExpressionNode& expression) {
   for (auto& statement : expression.statements) {
+    if (builder_.GetInsertBlock()->getTerminator()) {
+      break;
+    }
     visit(statement);
   }
 
   if (expression.value.has_value()) {
-    visit(*expression.value.value());
+    if (!builder_.GetInsertBlock()->getTerminator()) {
+      visit(*expression.value.value());
+    }
   } else {
-    llvm::StructType* empty_tuple = llvm::StructType::get(context_, {});
-    current_value_ = llvm::ConstantStruct::get(empty_tuple, {});
+    if (!builder_.GetInsertBlock()->getTerminator()) {
+      llvm::StructType* empty_tuple = llvm::StructType::get(context_, {});
+      current_value_ = llvm::ConstantStruct::get(empty_tuple, {});
+    }
   }
 }
 
 void BuildVisitor::visit(const ast::IfExpressionNode& expression) {
-  llvm::AllocaInst* result_alloc = builder_.CreateAlloca(
-      get_llvm_type(expression.type_id), nullptr, "if.result");
+  llvm::AllocaInst* result_alloc = createAllocaAligned(
+      builder_, get_llvm_type(expression.type_id), "if.result");
 
   visit(*expression.condition);
   llvm::Value* condition = current_value_;
@@ -305,8 +320,10 @@ void BuildVisitor::visit(const ast::IfExpressionNode& expression) {
 
   builder_.SetInsertPoint(then_block);
   visit(*expression.body);
-  builder_.CreateStore(current_value_, result_alloc);
-  builder_.CreateBr(merge_block);
+  if (!builder_.GetInsertBlock()->getTerminator()) {
+    builder_.CreateStore(current_value_, result_alloc);
+    builder_.CreateBr(merge_block);
+  }
 
   for (std::size_t i = 0; i < expression.elif_bodies.size(); ++i) {
     const auto& elif = expression.elif_bodies[i];
@@ -322,20 +339,25 @@ void BuildVisitor::visit(const ast::IfExpressionNode& expression) {
 
     builder_.SetInsertPoint(elif_body_blocks[i]);
     visit(*elif.block);
-    builder_.CreateStore(current_value_, result_alloc);
-    builder_.CreateBr(merge_block);
+    if (!builder_.GetInsertBlock()->getTerminator()) {
+      builder_.CreateStore(current_value_, result_alloc);
+      builder_.CreateBr(merge_block);
+    }
   }
 
   builder_.SetInsertPoint(else_block);
   if (expression.else_body.has_value()) {
     visit(*expression.else_body.value());
-    builder_.CreateStore(current_value_, result_alloc);
+    if (!builder_.GetInsertBlock()->getTerminator()) {
+      builder_.CreateStore(current_value_, result_alloc);
+      builder_.CreateBr(merge_block);
+    }
   } else {
     llvm::StructType* empty_tuple = llvm::StructType::get(context_, {});
     builder_.CreateStore(llvm::ConstantStruct::get(empty_tuple, {}),
                          result_alloc);
+    builder_.CreateBr(merge_block);
   }
-  builder_.CreateBr(merge_block);
 
   builder_.SetInsertPoint(merge_block);
   current_value_ =
@@ -344,7 +366,7 @@ void BuildVisitor::visit(const ast::IfExpressionNode& expression) {
 
 void BuildVisitor::visit(const ast::LoopExpressionNode& loop) {
   llvm::AllocaInst* result =
-      builder_.CreateAlloca(get_llvm_type(loop.type_id), nullptr, "result");
+      createAllocaAligned(builder_, get_llvm_type(loop.type_id), "result");
 
   llvm::BasicBlock* body =
       llvm::BasicBlock::Create(context_, "loop.body", current_function_);
@@ -366,12 +388,12 @@ void BuildVisitor::visit(const ast::LoopExpressionNode& loop) {
   builder_.SetInsertPoint(body);
 
   for (auto& statement : loop.body) {
+    if (builder_.GetInsertBlock()->getTerminator()) {
+      break;
+    }
     visit(statement);
   }
 
-  // Only emit the back-edge if the current block doesn't already have a
-  // terminator (a break/continue/return inside the loop body may have
-  // already closed the block).
   if (!builder_.GetInsertBlock()->getTerminator()) {
     builder_.CreateBr(body);
   }
@@ -405,7 +427,7 @@ void BuildVisitor::visit(const ast::LogicalOrNode& node) {
   }
 
   llvm::AllocaInst* result_alloc =
-      builder_.CreateAlloca(builder_.getInt1Ty(), nullptr, "or.result");
+      createAllocaAligned(builder_, builder_.getInt1Ty(), "or.result");
 
   llvm::BasicBlock* merge_block =
       llvm::BasicBlock::Create(context_, "or.merge", current_function_);
@@ -447,7 +469,7 @@ void BuildVisitor::visit(const ast::LogicalAndNode& node) {
   }
 
   llvm::AllocaInst* result_alloc =
-      builder_.CreateAlloca(builder_.getInt1Ty(), nullptr, "and.result");
+      createAllocaAligned(builder_, builder_.getInt1Ty(), "and.result");
 
   llvm::BasicBlock* merge_block =
       llvm::BasicBlock::Create(context_, "and.merge", current_function_);
@@ -493,27 +515,52 @@ void BuildVisitor::visit(const ast::ComparisonNode& node) {
   for (auto& [op, expr] : node.right) {
     visit(expr);
 
+    bool is_signed = type_store_.is_signed_type(expr.type_id);
+    bool is_float = type_store_.is_float_type(expr.type_id);
+
     std::visit(
         [&](auto&& oper) {
           using T = std::decay_t<decltype(oper)>;
 
           if constexpr (std::is_same_v<T, tkn::Equal>) {
-            accum = builder_.CreateICmpEQ(accum, current_value_);
+            accum = is_float ? builder_.CreateFCmpOEQ(accum, current_value_)
+                             : builder_.CreateICmpEQ(accum, current_value_);
           }
           if constexpr (std::is_same_v<T, tkn::NotEqual>) {
-            accum = builder_.CreateICmpNE(accum, current_value_);
+            accum = is_float ? builder_.CreateFCmpONE(accum, current_value_)
+                             : builder_.CreateICmpNE(accum, current_value_);
           }
           if constexpr (std::is_same_v<T, tkn::Less>) {
-            accum = builder_.CreateICmpSLT(accum, current_value_);
+            if (is_float)
+              accum = builder_.CreateFCmpOLT(accum, current_value_);
+            else if (is_signed)
+              accum = builder_.CreateICmpSLT(accum, current_value_);
+            else
+              accum = builder_.CreateICmpULT(accum, current_value_);
           }
           if constexpr (std::is_same_v<T, tkn::LessEqual>) {
-            accum = builder_.CreateICmpSLE(accum, current_value_);
+            if (is_float)
+              accum = builder_.CreateFCmpOLE(accum, current_value_);
+            else if (is_signed)
+              accum = builder_.CreateICmpSLE(accum, current_value_);
+            else
+              accum = builder_.CreateICmpULE(accum, current_value_);
           }
           if constexpr (std::is_same_v<T, tkn::Greater>) {
-            accum = builder_.CreateICmpSGT(accum, current_value_);
+            if (is_float)
+              accum = builder_.CreateFCmpOGT(accum, current_value_);
+            else if (is_signed)
+              accum = builder_.CreateICmpSGT(accum, current_value_);
+            else
+              accum = builder_.CreateICmpUGT(accum, current_value_);
           }
           if constexpr (std::is_same_v<T, tkn::GreaterEqual>) {
-            accum = builder_.CreateICmpSGE(accum, current_value_);
+            if (is_float)
+              accum = builder_.CreateFCmpOGE(accum, current_value_);
+            else if (is_signed)
+              accum = builder_.CreateICmpSGE(accum, current_value_);
+            else
+              accum = builder_.CreateICmpUGE(accum, current_value_);
           }
         },
         op);
@@ -699,6 +746,57 @@ void BuildVisitor::visit(const ast::CastNode& cast_node) {
 
   if (!cast_node.type.has_value()) {
     return;
+  }
+
+  tp::TypeId src_id = cast_node.expression->type_id;
+  tp::TypeId dst_id = cast_node.type_id;
+
+  if (src_id == dst_id) {
+    return;
+  }
+
+  llvm::Type* dst_ty = get_llvm_type(dst_id);
+  llvm::Value* src = current_value_;
+
+  bool src_int = type_store_.is_integer_type(src_id);
+  bool dst_int = type_store_.is_integer_type(dst_id);
+  bool src_float = type_store_.is_float_type(src_id);
+  bool dst_float = type_store_.is_float_type(dst_id);
+  bool src_signed = type_store_.is_signed_type(src_id);
+
+  if (src_int && dst_int) {
+    unsigned src_bits = src->getType()->getIntegerBitWidth();
+    unsigned dst_bits = dst_ty->getIntegerBitWidth();
+
+    if (dst_bits < src_bits) {
+      current_value_ = builder_.CreateTrunc(src, dst_ty);
+    } else if (dst_bits > src_bits) {
+      if (src_signed) {
+        current_value_ = builder_.CreateSExt(src, dst_ty);
+      } else {
+        current_value_ = builder_.CreateZExt(src, dst_ty);
+      }
+    }
+  } else if (src_int && dst_float) {
+    if (src_signed) {
+      current_value_ = builder_.CreateSIToFP(src, dst_ty);
+    } else {
+      current_value_ = builder_.CreateUIToFP(src, dst_ty);
+    }
+  } else if (src_float && dst_int) {
+    bool dst_signed = type_store_.is_signed_type(dst_id);
+    if (dst_signed) {
+      current_value_ = builder_.CreateFPToSI(src, dst_ty);
+    } else {
+      current_value_ = builder_.CreateFPToUI(src, dst_ty);
+    }
+  } else if (src_float && dst_float) {
+    llvm::Type* src_ty = src->getType();
+    if (src_ty->isFloatTy() && dst_ty->isDoubleTy()) {
+      current_value_ = builder_.CreateFPExt(src, dst_ty);
+    } else if (src_ty->isDoubleTy() && dst_ty->isFloatTy()) {
+      current_value_ = builder_.CreateFPTrunc(src, dst_ty);
+    }
   }
 }
 

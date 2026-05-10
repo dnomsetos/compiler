@@ -23,6 +23,7 @@ add_executable(tests
 target_include_directories(tests
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../include
+        /test_utilities
 )
 
 target_link_libraries(tests
@@ -44,9 +45,19 @@ target_compile_options(tests
 
 message(STATUS "TEST_DATA_DIR: ${CMAKE_SOURCE_DIR}/tests/test_files/")
 
+set(HELPERS_OBJ "${CMAKE_CURRENT_BINARY_DIR}/helpers.o")
+add_custom_command(
+    OUTPUT "${HELPERS_OBJ}"
+    COMMAND ${CMAKE_C_COMPILER} -c "${CMAKE_SOURCE_DIR}/tests/test_files/helpers.c" -o "${HELPERS_OBJ}"
+    DEPENDS "${CMAKE_SOURCE_DIR}/tests/test_files/helpers.c"
+    COMMENT "Compiling helpers.c"
+)
+add_custom_target(helpers_obj DEPENDS "${HELPERS_OBJ}")
+add_dependencies(tests helpers_obj)
 
 target_compile_definitions(tests PRIVATE
     PARSE_TEST_DATA_DIR="${CMAKE_SOURCE_DIR}/tests/test_files/"
+    TEST_HELPERS_OBJ="${HELPERS_OBJ}"
 )
 
 include(GoogleTest)
