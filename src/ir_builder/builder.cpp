@@ -1,28 +1,29 @@
 #include <iostream>
-#include <llvm-22/llvm/IR/GlobalVariable.h>
 #include <ranges>
 #include <stdexcept>
 #include <type_traits>
 #include <variant>
 
 #include <ir_builder/builder.hpp>
+#include <ir_builder/ir_utilities.hpp>
 #include <parser/ast.hpp>
 
 #include <llvm-22/llvm/IR/BasicBlock.h>
 #include <llvm-22/llvm/IR/DerivedTypes.h>
 #include <llvm-22/llvm/IR/Function.h>
+#include <llvm-22/llvm/IR/GlobalVariable.h>
 #include <llvm-22/llvm/IR/LegacyPassManager.h>
 #include <llvm-22/llvm/IR/Verifier.h>
 #include <llvm-22/llvm/Support/raw_os_ostream.h>
 #include <llvm-22/llvm/TargetParser/Host.h>
 
-inline llvm::AllocaInst* createAllocaAligned(llvm::IRBuilder<>& B,
+inline llvm::AllocaInst* createAllocaAligned(llvm::IRBuilder<>& builder,
                                              llvm::Type* ty,
                                              const llvm::Twine& name = "") {
-  const llvm::DataLayout& DL =
-      B.GetInsertBlock()->getParent()->getParent()->getDataLayout();
-  llvm::AllocaInst* alloca = B.CreateAlloca(ty, nullptr, name);
-  alloca->setAlignment(DL.getABITypeAlign(ty));
+  const llvm::DataLayout& data_layout =
+      builder.GetInsertBlock()->getParent()->getParent()->getDataLayout();
+  llvm::AllocaInst* alloca = builder.CreateAlloca(ty, nullptr, name);
+  alloca->setAlignment(data_layout.getABITypeAlign(ty));
   return alloca;
 }
 
@@ -77,7 +78,8 @@ void BuildVisitor::visit(const ast::Program& program) {
 void BuildVisitor::visit(
     const ast::FunctionDefinitionNode& function_definition) {
 
-  llvm::Type* type = get_llvm_type(function_definition.name->type_id);
+  llvm::Type* type = get_llvm_type(type_store_, builder_, context_,
+                                   function_definition.name->type_id);
 
   llvm::FunctionType* function_type;
 
@@ -146,17 +148,13 @@ void BuildVisitor::visit(
     variables_names_.insert({key, nullptr});
   }
 
-  if (!variables_counter_.contains(real_var_name)) {
-    variables_counter_.insert({real_var_name, 0});
-  }
-
-  std::string var_name =
-      std::to_string(variables_counter_.at(real_var_name)++) + real_var_name;
-
   if (!variable_definition.is_global) {
     llvm::AllocaInst* var;
-    variables_names_.at(key) = var = createAllocaAligned(
-        builder_, get_llvm_type(variable_definition.name->type_id), var_name);
+    variables_names_.at(key) = var =
+        createAllocaAligned(builder_,
+                            get_llvm_type(type_store_, builder_, context_,
+                                          variable_definition.name->type_id),
+                            real_var_name);
 
     if (variable_definition.value.has_value()) {
       visit(*variable_definition.value.value());
@@ -174,17 +172,20 @@ void BuildVisitor::visit(
     llvm::GlobalVariable* var;
 
     if (init_val == nullptr) {
-      llvm::Type* ty = get_llvm_type(variable_definition.name->type_id);
+      llvm::Type* ty = get_llvm_type(type_store_, builder_, context_,
+                                     variable_definition.name->type_id);
       llvm::Constant* zero = llvm::Constant::getNullValue(ty);
 
       var = new llvm::GlobalVariable(*module_, ty, false,
                                      llvm::GlobalValue::ExternalLinkage, zero,
-                                     var_name);
+                                     real_var_name);
     } else if (llvm::Constant* const_val =
                    llvm::dyn_cast<llvm::Constant>(init_val)) {
       var = new llvm::GlobalVariable(
-          *module_, get_llvm_type(variable_definition.name->type_id), false,
-          llvm::GlobalValue::ExternalLinkage, const_val, var_name);
+          *module_,
+          get_llvm_type(type_store_, builder_, context_,
+                        variable_definition.name->type_id),
+          false, llvm::GlobalValue::ExternalLinkage, const_val, real_var_name);
     } else {
       throw std::runtime_error("cannot init global variable");
     }
@@ -289,7 +290,9 @@ void BuildVisitor::visit(const ast::BlockExpressionNode& expression) {
 
 void BuildVisitor::visit(const ast::IfExpressionNode& expression) {
   llvm::AllocaInst* result_alloc = createAllocaAligned(
-      builder_, get_llvm_type(expression.type_id), "if.result");
+      builder_,
+      get_llvm_type(type_store_, builder_, context_, expression.type_id),
+      "if.result");
 
   visit(*expression.condition);
   llvm::Value* condition = current_value_;
@@ -360,13 +363,15 @@ void BuildVisitor::visit(const ast::IfExpressionNode& expression) {
   }
 
   builder_.SetInsertPoint(merge_block);
-  current_value_ =
-      builder_.CreateLoad(get_llvm_type(expression.type_id), result_alloc);
+  current_value_ = builder_.CreateLoad(
+      get_llvm_type(type_store_, builder_, context_, expression.type_id),
+      result_alloc);
 }
 
 void BuildVisitor::visit(const ast::LoopExpressionNode& loop) {
-  llvm::AllocaInst* result =
-      createAllocaAligned(builder_, get_llvm_type(loop.type_id), "result");
+  llvm::AllocaInst* result = createAllocaAligned(
+      builder_, get_llvm_type(type_store_, builder_, context_, loop.type_id),
+      "result");
 
   llvm::BasicBlock* body =
       llvm::BasicBlock::Create(context_, "loop.body", current_function_);
@@ -402,7 +407,8 @@ void BuildVisitor::visit(const ast::LoopExpressionNode& loop) {
 
   loop_stack_.pop_back();
 
-  current_value_ = builder_.CreateLoad(get_llvm_type(loop.type_id), result);
+  current_value_ = builder_.CreateLoad(
+      get_llvm_type(type_store_, builder_, context_, loop.type_id), result);
 }
 
 void BuildVisitor::visit(const ast::AssignmentNode& assignment) {
@@ -531,36 +537,40 @@ void BuildVisitor::visit(const ast::ComparisonNode& node) {
                              : builder_.CreateICmpNE(accum, current_value_);
           }
           if constexpr (std::is_same_v<T, tkn::Less>) {
-            if (is_float)
+            if (is_float) {
               accum = builder_.CreateFCmpOLT(accum, current_value_);
-            else if (is_signed)
+            } else if (is_signed) {
               accum = builder_.CreateICmpSLT(accum, current_value_);
-            else
+            } else {
               accum = builder_.CreateICmpULT(accum, current_value_);
+            }
           }
           if constexpr (std::is_same_v<T, tkn::LessEqual>) {
-            if (is_float)
+            if (is_float) {
               accum = builder_.CreateFCmpOLE(accum, current_value_);
-            else if (is_signed)
+            } else if (is_signed) {
               accum = builder_.CreateICmpSLE(accum, current_value_);
-            else
+            } else {
               accum = builder_.CreateICmpULE(accum, current_value_);
+            }
           }
           if constexpr (std::is_same_v<T, tkn::Greater>) {
-            if (is_float)
+            if (is_float) {
               accum = builder_.CreateFCmpOGT(accum, current_value_);
-            else if (is_signed)
+            } else if (is_signed) {
               accum = builder_.CreateICmpSGT(accum, current_value_);
-            else
+            } else {
               accum = builder_.CreateICmpUGT(accum, current_value_);
+            }
           }
           if constexpr (std::is_same_v<T, tkn::GreaterEqual>) {
-            if (is_float)
+            if (is_float) {
               accum = builder_.CreateFCmpOGE(accum, current_value_);
-            else if (is_signed)
+            } else if (is_signed) {
               accum = builder_.CreateICmpSGE(accum, current_value_);
-            else
+            } else {
               accum = builder_.CreateICmpUGE(accum, current_value_);
+            }
           }
         },
         op);
@@ -570,57 +580,24 @@ void BuildVisitor::visit(const ast::ComparisonNode& node) {
 }
 
 void BuildVisitor::visit(const ast::BitwiseOrNode& node) {
-  visit(*node.left);
-
-  if (node.right.empty()) {
-    return;
-  }
-
-  llvm::Value* accum = current_value_;
-
-  for (auto& [op, expr] : node.right) {
-    visit(expr);
-
-    accum = builder_.CreateOr(accum, current_value_);
-  }
-
-  current_value_ = accum;
+  binary_node_helper(node,
+                     [&](llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* {
+                       return builder_.CreateOr(lhs, rhs);
+                     });
 }
 
 void BuildVisitor::visit(const ast::BitwiseXorNode& node) {
-  visit(*node.left);
-
-  if (node.right.empty()) {
-    return;
-  }
-
-  llvm::Value* accum = current_value_;
-
-  for (auto& [op, expr] : node.right) {
-    visit(expr);
-
-    accum = builder_.CreateXor(accum, current_value_);
-  }
-
-  current_value_ = accum;
+  binary_node_helper(node,
+                     [&](llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* {
+                       return builder_.CreateXor(lhs, rhs);
+                     });
 }
 
 void BuildVisitor::visit(const ast::BitwiseAndNode& node) {
-  visit(*node.left);
-
-  if (node.right.empty()) {
-    return;
-  }
-
-  llvm::Value* accum = current_value_;
-
-  for (auto& [op, expr] : node.right) {
-    visit(expr);
-
-    accum = builder_.CreateAnd(accum, current_value_);
-  }
-
-  current_value_ = accum;
+  binary_node_helper(node,
+                     [&](llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* {
+                       return builder_.CreateAnd(lhs, rhs);
+                     });
 }
 
 void BuildVisitor::visit(const ast::ShiftNode& node) {
@@ -755,7 +732,7 @@ void BuildVisitor::visit(const ast::CastNode& cast_node) {
     return;
   }
 
-  llvm::Type* dst_ty = get_llvm_type(dst_id);
+  llvm::Type* dst_ty = get_llvm_type(type_store_, builder_, context_, dst_id);
   llvm::Value* src = current_value_;
 
   bool src_int = type_store_.is_integer_type(src_id);
@@ -850,8 +827,9 @@ void BuildVisitor::visit(const ast::IdentifierNode& identifier) {
 
   llvm::Value* variable = variables_names_.at(key);
 
-  current_value_ =
-      builder_.CreateLoad(get_llvm_type(identifier.type_id), variable);
+  current_value_ = builder_.CreateLoad(
+      get_llvm_type(type_store_, builder_, context_, identifier.type_id),
+      variable);
 }
 
 void BuildVisitor::visit(const ast::LiteralNode& literal) {
@@ -860,70 +838,27 @@ void BuildVisitor::visit(const ast::LiteralNode& literal) {
         using T = std::decay_t<decltype(val)>;
 
         if constexpr (std::is_same_v<T, tkn::IntLiteral>) {
-          current_value_ =
-              llvm::ConstantInt::get(get_llvm_type(literal.type_id), val.value);
+          current_value_ = llvm::ConstantInt::get(
+              get_llvm_type(type_store_, builder_, context_, literal.type_id),
+              val.value);
         }
         if constexpr (std::is_same_v<T, tkn::FloatLiteral>) {
-          current_value_ =
-              llvm::ConstantFP::get(get_llvm_type(literal.type_id), val.value);
+          current_value_ = llvm::ConstantFP::get(
+              get_llvm_type(type_store_, builder_, context_, literal.type_id),
+              val.value);
         }
         if constexpr (std::is_same_v<T, tkn::BoolLiteral>) {
-          current_value_ =
-              llvm::ConstantInt::get(get_llvm_type(literal.type_id), val.value);
+          current_value_ = llvm::ConstantInt::get(
+              get_llvm_type(type_store_, builder_, context_, literal.type_id),
+              val.value);
         }
         if constexpr (std::is_same_v<T, tkn::CharLiteral>) {
-          current_value_ =
-              llvm::ConstantInt::get(get_llvm_type(literal.type_id), val.value);
+          current_value_ = llvm::ConstantInt::get(
+              get_llvm_type(type_store_, builder_, context_, literal.type_id),
+              val.value);
         }
       },
       *literal.literal);
-}
-
-llvm::Type* BuildVisitor::get_llvm_type(tp::TypeId type_id) {
-  auto& tp_type = type_store_.get_type(type_id);
-
-  return std::visit(
-      [&](auto&& type) -> llvm::Type* {
-        using T = std::decay_t<decltype(type)>;
-
-        if constexpr (std::is_same_v<T, tp::I8>) {
-          return builder_.getInt8Ty();
-        } else if constexpr (std::is_same_v<T, tp::I16>) {
-          return builder_.getInt16Ty();
-        } else if constexpr (std::is_same_v<T, tp::I32>) {
-          return builder_.getInt32Ty();
-        } else if constexpr (std::is_same_v<T, tp::I64>) {
-          return builder_.getInt64Ty();
-        } else if constexpr (std::is_same_v<T, tp::U8>) {
-          return builder_.getInt8Ty();
-        } else if constexpr (std::is_same_v<T, tp::U16>) {
-          return builder_.getInt16Ty();
-        } else if constexpr (std::is_same_v<T, tp::U32>) {
-          return builder_.getInt32Ty();
-        } else if constexpr (std::is_same_v<T, tp::U64>) {
-          return builder_.getInt64Ty();
-        } else if constexpr (std::is_same_v<T, tp::F32>) {
-          return builder_.getFloatTy();
-        } else if constexpr (std::is_same_v<T, tp::F64>) {
-          return builder_.getDoubleTy();
-        } else if constexpr (std::is_same_v<T, tp::Bool>) {
-          return builder_.getInt1Ty();
-        } else if constexpr (std::is_same_v<T, tp::Char>) {
-          return builder_.getInt8Ty();
-        } else if constexpr (std::is_same_v<T, tp::Void>) {
-          return llvm::StructType::get(context_, {});
-        } else if constexpr (std::is_same_v<T, tp::FunctionType>) {
-          auto* ret = get_llvm_type(type.return_type);
-          std::vector<llvm::Type*> params;
-          for (auto a : type.args) {
-            params.push_back(get_llvm_type(a));
-          }
-          return llvm::FunctionType::get(ret, params, false);
-        }
-
-        throw std::runtime_error("Unknown type");
-      },
-      tp_type.type);
 }
 
 void BuildVisitor::print_module(std::ostream& out) {
@@ -981,4 +916,43 @@ void BuildVisitor::emit_object(const std::string& output_path) {
 
   pass_manager.run(*module_);
   dest.flush();
+}
+
+void BuildVisitor::emit_executable(
+    const std::string& output_path,
+    const std::vector<std::string>& link_objects) {
+
+  emit_object("out.o");
+
+  std::string command = "gcc out.o ";
+  for (auto& object : link_objects) {
+    command += object + " ";
+  }
+  command += " -o " + output_path;
+
+  std::system(command.c_str());
+
+  std::remove("out.o");
+}
+
+template <typename T>
+  requires is_in_type_tuple_v<T, ast::BinaryNodeTuple>
+void BuildVisitor::binary_node_helper(
+    const T& binary_node,
+    std::function<llvm::Value*(llvm::Value*, llvm::Value*)> accum_function) {
+  visit(*binary_node.left);
+
+  if (binary_node.right.empty()) {
+    return;
+  }
+
+  llvm::Value* accum = current_value_;
+
+  for (auto& [op, expr] : binary_node.right) {
+    visit(expr);
+
+    accum = accum_function(accum, current_value_);
+  }
+
+  current_value_ = accum;
 }

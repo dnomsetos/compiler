@@ -56,7 +56,8 @@ add_custom_target(helpers_obj DEPENDS "${HELPERS_OBJ}")
 add_dependencies(tests helpers_obj)
 
 target_compile_definitions(tests PRIVATE
-    PARSE_TEST_DATA_DIR="${CMAKE_SOURCE_DIR}/tests/test_files/"
+    PROJECT_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+    TEST_DATA_DIR="${CMAKE_SOURCE_DIR}/tests/test_files/"
     TEST_HELPERS_OBJ="${HELPERS_OBJ}"
 )
 

@@ -1,7 +1,7 @@
-; ModuleID = '/code.txt'
-source_filename = "/code.txt"
+; ModuleID = 'tests/test_files/big_expression/code.txt'
+source_filename = "tests/test_files/big_expression/code.txt"
 
-@"0x" = global i32 87
+@x = global i32 87
 
 declare void @print_i8(i8)
 
@@ -31,7 +31,7 @@ declare void @print_void()
 
 define {} @main() {
 entry:
-  %0 = load i32, ptr @"0x", align 4
+  %0 = load i32, ptr @x, align 4
   call void @print_i32(i32 %0)
   ret {} undef
 }

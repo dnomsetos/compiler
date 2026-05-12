@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <fstream>
 #include <ranges>
 
@@ -37,7 +38,7 @@ TEST_P(ParseTests, ) {
   PrintVisitor visitor(buffer);
   visitor(*ast.value().first);
 
-  std::ifstream result(PARSE_TEST_DATA_DIR + dir_name + ast_filename,
+  std::ifstream result(TEST_DATA_DIR + dir_name + ast_filename,
                        std::ios::binary);
   ASSERT_TRUE(result.is_open());
 
@@ -71,7 +72,7 @@ TEST_P(InterpretTests, ) {
 
   std::string output = testing::internal::GetCapturedStdout();
 
-  std::ifstream result(PARSE_TEST_DATA_DIR + dir_name + result_filename);
+  std::ifstream result(TEST_DATA_DIR + dir_name + result_filename);
   ASSERT_TRUE(result.is_open());
 
   std::stringstream buffer;

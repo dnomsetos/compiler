@@ -71,13 +71,20 @@ public:
   void visit(const ast::IdentifierNode& identifier);
   void visit(const ast::LiteralNode& literal);
 
-  llvm::Type* get_llvm_type(tp::TypeId type);
-
   void print_module(std::ostream& out);
 
   void emit_object(const std::string& output_path);
 
+  void emit_executable(const std::string& output_path,
+                       const std::vector<std::string>& link_objects);
+
 private:
+  template <typename T>
+    requires is_in_type_tuple_v<T, ast::BinaryNodeTuple>
+  void binary_node_helper(
+      const T& binary_node,
+      std::function<llvm::Value*(llvm::Value*, llvm::Value*)> accum_function);
+
   struct LoopContext {
     llvm::BasicBlock* body;
     llvm::BasicBlock* finish;
@@ -95,7 +102,6 @@ private:
 
   std::vector<LoopContext> loop_stack_;
 
-  std::unordered_map<std::string, std::size_t> variables_counter_;
   std::unordered_map<std::pair<SymbolTable*, std::string>, llvm::Value*,
                      PairHash>
       variables_names_;

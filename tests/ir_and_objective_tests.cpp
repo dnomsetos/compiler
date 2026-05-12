@@ -34,12 +34,13 @@ TEST_P(IrTests, ) {
   SemanticVisitor visitor(type_store, symbol_table);
   ASSERT_NO_THROW(visitor.visit(*ast.value().first));
 
-  BuildVisitor visitor2(code_filename, type_store);
+  BuildVisitor visitor2(
+      get_relative_path(TEST_DATA_DIR + dir_name + code_filename), type_store);
   ASSERT_NO_THROW(visitor2.visit(*ast.value().first));
 
   visitor2.print_module(buffer);
 
-  std::ifstream result(PARSE_TEST_DATA_DIR + dir_name + ir_filename,
+  std::ifstream result(TEST_DATA_DIR + dir_name + ir_filename,
                        std::ios::binary);
   ASSERT_TRUE(result.is_open());
 
@@ -63,12 +64,12 @@ TEST_P(ObjectiveTests, ) {
   SemanticVisitor visitor(type_store, symbol_table);
   ASSERT_NO_THROW(visitor.visit(*ast.value().first));
 
-  BuildVisitor visitor2(code_filename, type_store);
+  BuildVisitor visitor2(
+      get_relative_path(TEST_DATA_DIR + dir_name + code_filename), type_store);
   ASSERT_NO_THROW(visitor2.visit(*ast.value().first));
 
-  visitor2.emit_object("out.o");
+  visitor2.emit_executable("out", {TEST_HELPERS_OBJ});
 
-  std::system("gcc out.o " TEST_HELPERS_OBJ " -o out");
   std::system("./out > out_result.txt 2>&1");
 
   std::string output;
@@ -79,14 +80,13 @@ TEST_P(ObjectiveTests, ) {
   ss << out_file.rdbuf();
   output = ss.str();
 
-  std::ifstream result(PARSE_TEST_DATA_DIR + dir_name + result_filename);
+  std::ifstream result(TEST_DATA_DIR + dir_name + result_filename);
   EXPECT_TRUE(result.is_open());
   std::stringstream buffer;
   buffer << result.rdbuf();
 
   EXPECT_EQ(output, buffer.str());
 
-  std::remove("out.o");
   std::remove("out");
   std::remove("out_result.txt");
 }

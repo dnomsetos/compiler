@@ -1,7 +1,7 @@
-; ModuleID = '/code.txt'
-source_filename = "/code.txt"
+; ModuleID = 'tests/test_files/simple/code.txt'
+source_filename = "tests/test_files/simple/code.txt"
 
-@"0x" = global i64 0
+@x = global i64 0
 
 declare void @print_i8(i8)
 
@@ -31,8 +31,8 @@ declare void @print_void()
 
 define {} @main() {
 entry:
-  store i64 7, ptr @"0x", align 4
-  %0 = load i64, ptr @"0x", align 4
+  store i64 7, ptr @x, align 4
+  %0 = load i64, ptr @x, align 4
   call void @print_i64(i64 %0)
   ret {} undef
 }

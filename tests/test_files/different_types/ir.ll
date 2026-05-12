@@ -1,18 +1,18 @@
-; ModuleID = '/code.txt'
-source_filename = "/code.txt"
+; ModuleID = 'tests/test_files/different_types/code.txt'
+source_filename = "tests/test_files/different_types/code.txt"
 
-@"0a" = global i8 1
-@"0b" = global i16 2
-@"0c" = global i32 3
-@"0d" = global i64 4
-@"0e" = global i8 5
-@"0f" = global i16 6
-@"0g" = global i32 7
-@"0h" = global i64 8
-@"0i" = global float 9.000000e+00
-@"0j" = global double 1.000000e+01
-@"0k" = global i1 true
-@"0l" = global i8 97
+@a = global i8 1
+@b = global i16 2
+@c = global i32 3
+@d = global i64 4
+@e = global i8 5
+@f = global i16 6
+@g = global i32 7
+@h = global i64 8
+@i = global float 9.000000e+00
+@j = global double 1.000000e+01
+@k = global i1 true
+@l = global i8 97
 
 declare void @print_i8(i8)
 

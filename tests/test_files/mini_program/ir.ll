@@ -1,5 +1,5 @@
-; ModuleID = '/code.txt'
-source_filename = "/code.txt"
+; ModuleID = 'tests/test_files/mini_program/code.txt'
+source_filename = "tests/test_files/mini_program/code.txt"
 
 declare void @print_i8(i8)
 
@@ -33,25 +33,25 @@ entry:
   store i32 %0, ptr %a, align 4
   %b = alloca i32, align 4
   store i32 %1, ptr %b, align 4
-  %"0sum" = alloca i64, align 4
+  %sum = alloca i64, align 4
   %2 = load i32, ptr %a, align 4
   %3 = load i32, ptr %b, align 4
   %4 = add i32 %2, %3
   %5 = sext i32 %4 to i64
-  store i64 %5, ptr %"0sum", align 4
-  %"0scaled" = alloca i64, align 4
-  %6 = load i64, ptr %"0sum", align 4
+  store i64 %5, ptr %sum, align 4
+  %scaled = alloca i64, align 4
+  %6 = load i64, ptr %sum, align 4
   %7 = load i32, ptr %b, align 4
   %8 = sext i32 %7 to i64
   %9 = mul i64 %6, %8
-  store i64 %9, ptr %"0scaled", align 4
+  store i64 %9, ptr %scaled, align 4
   %if.result = alloca {}, align 1
-  %10 = load i64, ptr %"0scaled", align 4
+  %10 = load i64, ptr %scaled, align 4
   %11 = icmp ugt i64 %10, 100
   br i1 %11, label %if.then, label %if.else
 
 if.then:                                          ; preds = %entry
-  store i64 100, ptr %"0scaled", align 4
+  store i64 100, ptr %scaled, align 4
   store {} zeroinitializer, ptr %if.result, align 1
   br label %if.merge
 
@@ -61,16 +61,16 @@ if.else:                                          ; preds = %entry
 
 if.merge:                                         ; preds = %loop.finish, %if.then
   %12 = load {}, ptr %if.result, align 1
-  %13 = load i64, ptr %"0sum", align 4
-  %14 = load i64, ptr %"0scaled", align 4
+  %13 = load i64, ptr %sum, align 4
+  %14 = load i64, ptr %scaled, align 4
   %15 = add i64 %13, %14
   ret i64 %15
 
 loop.body:                                        ; preds = %if.else
-  %"0tmp" = alloca i64, align 4
-  %16 = load i64, ptr %"0scaled", align 4
+  %tmp = alloca i64, align 4
+  %16 = load i64, ptr %scaled, align 4
   %17 = sub i64 %16, 1
-  store i64 %17, ptr %"0tmp", align 4
+  store i64 %17, ptr %tmp, align 4
   store {} zeroinitializer, ptr %result, align 1
   br label %loop.finish
 

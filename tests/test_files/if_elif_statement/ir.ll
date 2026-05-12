@@ -1,5 +1,5 @@
-; ModuleID = '/code.txt'
-source_filename = "/code.txt"
+; ModuleID = 'tests/test_files/if_elif_statement/code.txt'
+source_filename = "tests/test_files/if_elif_statement/code.txt"
 
 declare void @print_i8(i8)
 
@@ -56,10 +56,10 @@ if.merge:                                         ; preds = %if.else, %if.then
   br i1 %7, label %if.then2, label %elif.cond
 
 if.then2:                                         ; preds = %if.merge
-  %"0a" = alloca i64, align 4
+  %a = alloca i64, align 4
   %8 = load i64, ptr %x, align 4
-  store i64 %8, ptr %"0a", align 4
-  %9 = load i64, ptr %"0a", align 4
+  store i64 %8, ptr %a, align 4
+  %9 = load i64, ptr %a, align 4
   store i64 %9, ptr %if.result1, align 4
   br label %if.merge4
 
@@ -69,22 +69,22 @@ elif.cond:                                        ; preds = %if.merge
   br i1 %11, label %elif.body, label %if.else3
 
 elif.body:                                        ; preds = %elif.cond
-  %"0b" = alloca i64, align 4
+  %b = alloca i64, align 4
   %12 = load i64, ptr %x, align 4
   %13 = mul i64 %12, 2
-  store i64 %13, ptr %"0b", align 4
-  %14 = load i64, ptr %"0b", align 4
+  store i64 %13, ptr %b, align 4
+  %14 = load i64, ptr %b, align 4
   store i64 %14, ptr %if.result1, align 4
   br label %if.merge4
 
 if.else3:                                         ; preds = %elif.cond
-  %"0c" = alloca i64, align 4
+  %c = alloca i64, align 4
   %15 = load i64, ptr %x, align 4
   %16 = sub i64 %15, 1
-  store i64 %16, ptr %"0c", align 4
-  %17 = load i64, ptr %"0c", align 4
+  store i64 %16, ptr %c, align 4
+  %17 = load i64, ptr %c, align 4
   call void @print_u64(i64 %17)
-  %18 = load i64, ptr %"0c", align 4
+  %18 = load i64, ptr %c, align 4
   store i64 %18, ptr %if.result1, align 4
   br label %if.merge4
 

@@ -1,5 +1,5 @@
-; ModuleID = '/code.txt'
-source_filename = "/code.txt"
+; ModuleID = 'tests/test_files/strange_situation/code.txt'
+source_filename = "tests/test_files/strange_situation/code.txt"
 
 declare void @print_i8(i8)
 
@@ -29,18 +29,18 @@ declare void @print_void()
 
 define {} @main() {
 entry:
-  %"0x" = alloca i64, align 4
-  store i64 42, ptr %"0x", align 4
-  %"0y" = alloca i64, align 4
-  store i64 146, ptr %"0y", align 4
-  %"0z" = alloca i64, align 4
-  %0 = load i64, ptr %"0x", align 4
-  %1 = load i64, ptr %"0y", align 4
+  %x = alloca i64, align 4
+  store i64 42, ptr %x, align 4
+  %y = alloca i64, align 4
+  store i64 146, ptr %y, align 4
+  %z = alloca i64, align 4
+  %0 = load i64, ptr %x, align 4
+  %1 = load i64, ptr %y, align 4
   %2 = add i64 %0, %1
-  store i64 %2, ptr %"0z", align 4
-  %3 = load i64, ptr %"0z", align 4
+  store i64 %2, ptr %z, align 4
+  %3 = load i64, ptr %z, align 4
   call void @print_i64(i64 %3)
-  %4 = load i64, ptr %"0x", align 4
+  %4 = load i64, ptr %x, align 4
   call void @print_i64(i64 %4)
   ret {} undef
 }
