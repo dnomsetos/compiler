@@ -1,6 +1,6 @@
 variable definition: 
   name: x
-  type: i64
+  type:     i64
 function definition: 
   name: main
   argument list is empty

@@ -1,6 +1,4 @@
-#include <filesystem>
 #include <fstream>
-#include <ranges>
 
 #include "test_utilities.hpp"
 #include <gtest/gtest.h>
@@ -9,7 +7,6 @@
 #include <semantic_analysis/semantic_visitor.hpp>
 #include <semantic_analysis/symbol_table.hpp>
 #include <semantic_analysis/type_storage.hpp>
-#include <testing_utilities/interpreter_visitor.hpp>
 #include <testing_utilities/print_visitor.hpp>
 #include <testing_utilities/type_checker.hpp>
 
@@ -48,55 +45,5 @@ TEST_P(ParseTests, ) {
   ASSERT_EQ(result_buffer.str(), buffer.str());
 }
 
-TEST_P(InterpretTests, ) {
-  std::string dir_name = GetParam();
-
-  auto data = prepare_test_data(dir_name);
-  ASSERT_TRUE(data.has_value()) << "error opening file code.txt";
-
-  auto& ast = data.value();
-  ASSERT_TRUE(ast.has_value());
-
-  testing::internal::CaptureStdout();
-
-  TypeStore type_store;
-  GlobalSymbolTable symbol_table{type_store};
-  SemanticVisitor visitor(type_store, symbol_table);
-  ASSERT_NO_THROW(visitor.visit(*ast.value().first));
-
-  TypeChecker type_checker;
-  ASSERT_NO_THROW(type_checker.visit(*ast.value().first));
-
-  InterpreterVisitor interpreter(type_store);
-  ASSERT_NO_THROW(interpreter(*ast.value().first, "main"));
-
-  std::string output = testing::internal::GetCapturedStdout();
-
-  std::ifstream result(TEST_DATA_DIR + dir_name + result_filename);
-  ASSERT_TRUE(result.is_open());
-
-  std::stringstream buffer;
-  buffer << result.rdbuf();
-
-  ASSERT_EQ(output, buffer.str());
-}
-
-auto test_name_generator(
-    const testing::TestParamInfo<ParseTests::ParamType>& info) -> std::string {
-  auto view = info.param | std::views::split('_');
-  std::string result;
-  for (auto&& part : view) {
-    std::string str(part.begin(), part.end());
-    if (!str.empty()) {
-      str[0] = std::toupper(static_cast<unsigned char>(str[0]));
-      result += str;
-    }
-  }
-  return result;
-}
-
 INSTANTIATE_TEST_SUITE_P(, ParseTests, testing::Values(DIR_NAMES_LIST),
                          test_name_generator<ParseTests>);
-
-INSTANTIATE_TEST_SUITE_P(, InterpretTests, testing::Values(DIR_NAMES_LIST),
-                         test_name_generator<InterpretTests>);

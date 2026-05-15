@@ -53,6 +53,15 @@ struct IdentifierNode : ASTTypeNode {
                  const tkn::Position& position);
 };
 
+struct TypeNode : ASTNode {
+  alloc::pmr_unique_ptr<tkn::Identifier> type_name;
+  std::optional<tkn::Label> lifetime;
+  bool is_reference : 1 = false;
+  bool is_mutable : 1 = false;
+
+  TypeNode(const tkn::Position& position);
+};
+
 struct ExpressionNode;
 
 struct FunctionCallNode;
@@ -68,6 +77,22 @@ struct FunctionCallNode : ASTTypeNode {
 
   FunctionCallNode(alloc::pmr_unique_ptr<IdentifierNode>&& name,
                    const tkn::Position& position);
+};
+
+using ReferenceApplicantTuple = TypeTuple<IdentifierNode, FunctionCallNode>;
+
+using ReferenceApplicantVariant =
+    type_tuple_to_variant_t<ReferenceApplicantTuple>;
+
+struct LvalueDereferenceNode : ASTTypeNode {
+  alloc::pmr_unique_ptr<ReferenceApplicantVariant> reference;
+
+  template <typename T>
+  LvalueDereferenceNode(T&& reference, const tkn::Position& position)
+      : ASTTypeNode(position, SymbolTableInfo{}, TypeIdWrapper{}),
+        reference{alloc::make_unique_pmr<ReferenceApplicantVariant>(
+            std::in_place_type_t<std::decay_t<decltype(reference)>>{},
+            std::forward<T>(reference))} {}
 };
 
 struct PrimaryNode : ASTTypeNode {
@@ -116,7 +141,7 @@ GENERATE_NODE(AdditionNode,
               MultiplicationNode);
 GENERATE_NODE(ShiftNode, type_tuple_to_variant_t<tkn::ShiftOperatorTuple>,
               AdditionNode);
-GENERATE_NODE(BitwiseAndNode, tkn::BitwiseAnd, ShiftNode);
+GENERATE_NODE(BitwiseAndNode, tkn::Ampersand, ShiftNode);
 GENERATE_NODE(BitwiseXorNode, tkn::BitwiseXor, BitwiseAndNode);
 GENERATE_NODE(BitwiseOrNode, tkn::BitwiseOr, BitwiseXorNode);
 GENERATE_NODE(ComparisonNode,
@@ -140,14 +165,28 @@ using BitwiseBinaryNodeTuple =
 
 using ArithmeticBinaryNodeTuple = TypeTuple<AdditionNode, MultiplicationNode>;
 
+using LvalueNodeTuple = TypeTuple<IdentifierNode, LvalueDereferenceNode>;
+
+using LvalueNodeVariant = type_tuple_to_variant_t<LvalueNodeTuple>;
+
+struct LvalueExpressionNode : ASTTypeNode {
+  alloc::pmr_unique_ptr<LvalueNodeVariant> lvalue;
+
+  template <typename T>
+  LvalueExpressionNode(T&& lvalue, const tkn::Position& position)
+      : ASTTypeNode(position, SymbolTableInfo{}, TypeIdWrapper{}),
+        lvalue{alloc::make_unique_pmr<LvalueNodeVariant>(
+            std::in_place_type_t<std::decay_t<decltype(lvalue)>>{},
+            std::forward<T>(lvalue))} {}
+};
+
 struct AssignmentNode : ASTTypeNode {
-  alloc::pmr_unique_ptr<IdentifierNode> left;
+  alloc::pmr_unique_ptr<LvalueExpressionNode> left;
   alloc::pmr_unique_ptr<ExpressionNode> right;
 
-  template <typename T1, typename T2>
-  AssignmentNode(T1&& left, T2&& right, const tkn::Position& position)
-      : ASTTypeNode(position, SymbolTableInfo{}, TypeIdWrapper{}),
-        left{std::forward<T1>(left)}, right{std::forward<T2>(right)} {}
+  AssignmentNode(alloc::pmr_unique_ptr<LvalueExpressionNode>&& left,
+                 alloc::pmr_unique_ptr<ExpressionNode>&& right,
+                 const tkn::Position& position);
 };
 
 struct StatementNode;
@@ -202,7 +241,7 @@ struct ExpressionStatements {
 
 struct VariableDefinitionNode : ASTNode {
   alloc::pmr_unique_ptr<IdentifierNode> name;
-  std::optional<alloc::pmr_unique_ptr<IdentifierNode>> type;
+  std::optional<alloc::pmr_unique_ptr<TypeNode>> type;
   std::optional<alloc::pmr_unique_ptr<ExpressionNode>> value;
   bool is_global;
 
@@ -262,8 +301,8 @@ struct StatementNode : ASTNode {
 struct FunctionDefinitionNode : ASTNode {
   alloc::pmr_unique_ptr<IdentifierNode> name;
   // first is name, second is type
-  std::pmr::vector<std::pair<IdentifierNode, IdentifierNode>> argument_list;
-  alloc::pmr_unique_ptr<IdentifierNode> return_type;
+  std::pmr::vector<std::pair<IdentifierNode, TypeNode>> argument_list;
+  alloc::pmr_unique_ptr<TypeNode> return_type;
   alloc::pmr_unique_ptr<BlockExpressionNode> body;
 
   FunctionDefinitionNode(alloc::pmr_unique_ptr<IdentifierNode>&& name,

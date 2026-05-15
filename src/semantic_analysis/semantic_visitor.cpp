@@ -28,7 +28,7 @@ void SemanticVisitor::visit(ast::VariableDefinitionNode& variable_definition) {
 
   if (variable_definition.type.has_value()) {
     auto optional_type =
-        tp::get_type(variable_definition.type.value()->identifier->name);
+        tp::get_type(variable_definition.type.value()->type_name->name);
 
     if (!optional_type.has_value()) {
       throw std::runtime_error("Unknown type");
@@ -98,7 +98,7 @@ void SemanticVisitor::visit(ast::FunctionDefinitionNode& function_definition) {
 
   if (function_definition.return_type != nullptr) {
     auto optional_type =
-        tp::get_type(function_definition.return_type->identifier->name);
+        tp::get_type(function_definition.return_type->type_name->name);
 
     if (!optional_type.has_value()) {
       throw std::runtime_error("Unknown type");
@@ -122,7 +122,7 @@ void SemanticVisitor::visit(ast::FunctionDefinitionNode& function_definition) {
 
   for (auto& [arg_name, arg_type] : function_definition.argument_list) {
     // std::cout << "here" << std::endl;
-    auto optional_type = tp::get_type(arg_type.identifier->name);
+    auto optional_type = tp::get_type(arg_type.type_name->name);
 
     if (!optional_type.has_value()) {
       throw std::runtime_error("Unknown type");
@@ -425,58 +425,65 @@ void SemanticVisitor::visit(ast::LoopExpressionNode& loop,
 
 void SemanticVisitor::visit(ast::AssignmentNode& assignment,
                             tp::TypeId expected_type) {
+
   assignment.table = symbol_table_;
   assignment.type_id = type_store_.get_basic_type(tp::Void{});
 
-  if (expected_type != tp::no_type_id &&
-      !type_store_.unify(expected_type,
-                         type_store_.get_basic_type(tp::Void{}))) {
-    throw std::runtime_error("Type mismatch. Expected non void in assignment.");
-  }
+  if (std::holds_alternative<ast::IdentifierNode>(*assignment.left->lvalue)) {
+    auto& identifier = std::get<ast::IdentifierNode>(*assignment.left->lvalue);
 
-  auto symbol = symbol_table_->get_variable_symbol_in_position_maybe_undefined(
-      assignment.left->identifier->name,
-      static_cast<tkn::Position>(*assignment.left));
+    if (expected_type != tp::no_type_id &&
+        !type_store_.unify(expected_type,
+                           type_store_.get_basic_type(tp::Void{}))) {
+      throw std::runtime_error(
+          "Type mismatch. Expected non void in assignment.");
+    }
 
-  assignment.left->table = symbol_table_;
+    auto symbol =
+        symbol_table_->get_variable_symbol_in_position_maybe_undefined(
+            identifier.identifier->name,
+            static_cast<tkn::Position>(*assignment.left));
 
-  if (!symbol->is_defined) {
-    symbol_table_->define_symbol(assignment.left->identifier->name);
+    assignment.left->table = symbol_table_;
 
-    if (std::holds_alternative<tp::UndefinedType>(
-            type_store_.get_type(symbol->type).type)) {
+    if (!symbol->is_defined) {
+      symbol_table_->define_symbol(identifier.identifier->name);
+
+      if (std::holds_alternative<tp::UndefinedType>(
+              type_store_.get_type(symbol->type).type)) {
+        visit(*assignment.right);
+
+        if (!type_store_.unify(symbol->type, assignment.right->type_id)) {
+          throw std::runtime_error(
+              "Type mismatch in assignment. Expected type mismatch real type.");
+        }
+
+        symbol_table_->change_symbol_type(identifier.identifier->name,
+                                          assignment.right->type_id);
+
+        type_store_.add_ast_var(&identifier);
+
+        assignment.left->type_id = assignment.right->type_id;
+
+        return;
+      }
+    }
+
+    assignment.left->type_id = symbol->type;
+
+    if (symbol->type >= tp::basic_type_count) {
+      type_store_.add_ast_type(&*assignment.left);
+    }
+
+    if (assignment.right->type_id < tp::basic_type_count) {
+      visit(*assignment.right, symbol->type);
+    } else {
       visit(*assignment.right);
 
       if (!type_store_.unify(symbol->type, assignment.right->type_id)) {
         throw std::runtime_error(
             "Type mismatch in assignment. Expected type mismatch real type.");
       }
-
-      symbol_table_->change_symbol_type(assignment.left->identifier->name,
-                                        assignment.right->type_id);
-
-      type_store_.add_ast_var(&*assignment.left);
-
-      assignment.left->type_id = assignment.right->type_id;
-
-      return;
-    }
-  }
-
-  assignment.left->type_id = symbol->type;
-
-  if (symbol->type >= tp::basic_type_count) {
-    type_store_.add_ast_type(&*assignment.left);
-  }
-
-  if (assignment.right->type_id < tp::basic_type_count) {
-    visit(*assignment.right, symbol->type);
-  } else {
-    visit(*assignment.right);
-
-    if (!type_store_.unify(symbol->type, assignment.right->type_id)) {
-      throw std::runtime_error(
-          "Type mismatch in assignment. Expected type mismatch real type.");
     }
   }
 }

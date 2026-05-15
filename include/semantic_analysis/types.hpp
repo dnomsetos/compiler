@@ -54,6 +54,12 @@ struct FloatLiteral {
 
 std::ostream& operator<<(std::ostream& out, const FloatLiteral& literal);
 
+struct Reference {
+  TypeId base_type = no_type_id;
+};
+
+std::ostream& operator<<(std::ostream& out, const Reference& reference);
+
 using LiteralTypeTuple = TypeTuple<IntLiteral, FloatLiteral>;
 
 using LiteralVariant = type_tuple_to_variant_t<LiteralTypeTuple>;

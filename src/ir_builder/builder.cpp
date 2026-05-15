@@ -1,3 +1,4 @@
+#include "scanner/token.hpp"
 #include <iostream>
 #include <ranges>
 #include <stdexcept>
@@ -414,15 +415,19 @@ void BuildVisitor::visit(const ast::LoopExpressionNode& loop) {
 void BuildVisitor::visit(const ast::AssignmentNode& assignment) {
   visit(*assignment.right);
 
-  const Symbol* symbol =
-      assignment.table->get_variable_symbol(assignment.left->identifier->name);
+  if (std::holds_alternative<ast::IdentifierNode>(*assignment.left->lvalue)) {
+    auto& identifier = std::get<ast::IdentifierNode>(*assignment.left->lvalue);
 
-  builder_.CreateStore(
-      current_value_,
-      variables_names_.at({symbol->scope, assignment.left->identifier->name}));
+    const Symbol* symbol =
+        assignment.table->get_variable_symbol(identifier.identifier->name);
 
-  llvm::StructType* empty_tuple = llvm::StructType::get(context_, {});
-  current_value_ = llvm::ConstantStruct::get(empty_tuple, {});
+    builder_.CreateStore(
+        current_value_,
+        variables_names_.at({symbol->scope, identifier.identifier->name}));
+
+    llvm::StructType* empty_tuple = llvm::StructType::get(context_, {});
+    current_value_ = llvm::ConstantStruct::get(empty_tuple, {});
+  }
 }
 
 void BuildVisitor::visit(const ast::LogicalOrNode& node) {
@@ -686,7 +691,7 @@ void BuildVisitor::visit(const ast::MultiplicationNode& node) {
         [&](auto&& oper) {
           using T = std::decay_t<decltype(oper)>;
 
-          if constexpr (std::is_same_v<T, tkn::Multiply>) {
+          if constexpr (std::is_same_v<T, tkn::Asterisk>) {
             if (type_store_.is_integer_type(expr.type_id)) {
               accum = builder_.CreateMul(accum, current_value_);
             } else {

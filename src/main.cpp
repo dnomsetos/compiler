@@ -7,7 +7,6 @@
 #include <parser/parse.hpp>
 #include <scanner/tokenize.hpp>
 #include <semantic_analysis/semantic_visitor.hpp>
-#include <testing_utilities/interpreter_visitor.hpp>
 #include <testing_utilities/print_visitor.hpp>
 #include <testing_utilities/type_checker.hpp>
 #include <utility/output.hpp>
@@ -16,7 +15,6 @@ const int number_of_required_args = 3;
 
 const std::string help_mode = "--help";
 const std::string print_ast_mode = "--print_ast";
-const std::string interpret_mode = "--interpret";
 const std::string semantic_mode = "--semantic";
 const std::string ir_mode = "--build_ir";
 const std::string emit_object_mode = "--emit_object";
@@ -38,39 +36,6 @@ void print_ast(const std::string& code, std::ostream& out, bool skip_empty) {
 
   PrintVisitor visitor(out, skip_empty);
   visitor(*ast.value().first);
-}
-
-void interpret(const std::string& code) {
-  std::cout << "Interpreting\n";
-
-  auto tokens = tokenize(code);
-  auto ast = parse_program(tokens.begin(), tokens.end());
-
-  if (!ast.has_value()) {
-    std::cerr << "Failed to parse\n";
-    return;
-  }
-
-  TypeStore type_store;
-  GlobalSymbolTable global_symbol_table{type_store};
-
-  SemanticVisitor visitor(type_store, global_symbol_table);
-  visitor.visit(*ast.value().first);
-
-  TypeChecker type_checker;
-  type_checker.visit(*ast.value().first);
-
-  InterpreterVisitor interpreter(type_store);
-  auto result = interpreter(*ast.value().first, "main");
-
-  std::cout << "Returned from main: ";
-  std::visit(
-      [](auto&& value) {
-        if constexpr (requires { std::cout << value << '\n'; }) {
-          std::cout << value << '\n';
-        }
-      },
-      result);
 }
 
 void semantic(const std::string& code) {
@@ -162,7 +127,6 @@ void print_help() {
   std::cout << "Usage:\n";
   std::cout << "  compiler " << print_ast_mode << " <file> [" << out_file_arg
             << " <file>] [" << skip_empty_arg << " <true|false>]\n";
-  std::cout << "  compiler " << interpret_mode << " <file>\n";
   std::cout << "  compiler " << semantic_mode << " <file>\n";
   std::cout << "  compiler " << ir_mode << " <file> [" << out_file_arg
             << " <outeput.ll>]\n";
@@ -213,8 +177,6 @@ int main(int argc, char** argv) {
     } else {
       print_ast(code, std::cout, skip_empty);
     }
-  } else if (mode == interpret_mode) {
-    interpret(code);
   } else if (mode == semantic_mode) {
     semantic(code);
   } else if (mode == ir_mode) {

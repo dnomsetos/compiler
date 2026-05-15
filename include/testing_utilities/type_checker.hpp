@@ -9,6 +9,10 @@ public:
 
   void visit(const ast::LiteralNode& literal);
 
+  void visit(const ast::LvalueDereferenceNode& lvalue);
+
+  void visit(const ast::LvalueExpressionNode& lvalue);
+
   void visit(const ast::FunctionCallNode& function_call);
 
   void visit(const ast::ExpressionNode& expression);

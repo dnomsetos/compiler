@@ -14,6 +14,9 @@ IdentifierNode::IdentifierNode(const tkn::Identifier& identifier,
     : ASTTypeNode(position, SymbolTableInfo{}, TypeIdWrapper{}),
       identifier{alloc::make_unique_pmr<tkn::Identifier>(identifier)} {}
 
+TypeNode::TypeNode(const tkn::Position& position)
+    : ASTNode(position, SymbolTableInfo{}) {}
+
 FunctionCallNode::FunctionCallNode(alloc::pmr_unique_ptr<IdentifierNode>&& name,
                                    const tkn::Position& position)
     : ASTTypeNode(position, SymbolTableInfo{}, TypeIdWrapper{}),
@@ -38,6 +41,13 @@ ExpressionStatements::ExpressionStatements(
     alloc::pmr_unique_ptr<ExpressionNode>&& expr,
     alloc::pmr_unique_ptr<BlockExpressionNode>&& block)
     : expr{std::move(expr)}, block{std::move(block)} {}
+
+AssignmentNode::AssignmentNode(
+    alloc::pmr_unique_ptr<LvalueExpressionNode>&& left,
+    alloc::pmr_unique_ptr<ExpressionNode>&& right,
+    const tkn::Position& position)
+    : ASTTypeNode(position, SymbolTableInfo{}, TypeIdWrapper{}),
+      left{std::move(left)}, right{std::move(right)} {}
 
 BlockExpressionNode::BlockExpressionNode(const tkn::Position& position)
     : ASTTypeNode(position, SymbolTableInfo{}, TypeIdWrapper{}),

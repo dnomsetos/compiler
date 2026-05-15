@@ -6,11 +6,12 @@
 
 inline const std::pair<const char*, tkn::token_variant_t> keyword_table[] = {
     {"fn", tkn::Fn{}},         {"let", tkn::Let{}},
+    {"const", tkn::Const{}},   {"static", tkn::Static{}},
     {"if", tkn::If{}},         {"else", tkn::Else{}},
     {"true", tkn::True{}},     {"false", tkn::False{}},
     {"break", tkn::Break{}},   {"continue", tkn::Continue{}},
     {"return", tkn::Return{}}, {"loop", tkn::Loop{}},
-    {"as", tkn::As{}},
+    {"as", tkn::As{}},         {"mut", tkn::Mut{}},
 };
 
 inline const std::pair<const char*, tkn::token_variant_t>
@@ -21,9 +22,9 @@ inline const std::pair<const char*, tkn::token_variant_t>
         {"==", tkn::Equal{}},      {">=", tkn::GreaterEqual{}},
         {"<=", tkn::LessEqual{}},  {">", tkn::Greater{}},
         {"<", tkn::Less{}},        {"+", tkn::Plus{}},
-        {"-", tkn::Minus{}},       {"*", tkn::Multiply{}},
+        {"-", tkn::Minus{}},       {"*", tkn::Asterisk{}},
         {"/", tkn::Divide{}},      {"%", tkn::Mod{}},
-        {"&", tkn::BitwiseAnd{}},  {"|", tkn::BitwiseOr{}},
+        {"&", tkn::Ampersand{}},   {"|", tkn::BitwiseOr{}},
         {"^", tkn::BitwiseXor{}},  {";", tkn::Semicolon{}},
         {":", tkn::Colon{}},       {"(", tkn::LeftParent{}},
         {")", tkn::RightParent{}}, {"{", tkn::LeftBrace{}},

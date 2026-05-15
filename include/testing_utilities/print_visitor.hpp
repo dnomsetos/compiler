@@ -40,6 +40,10 @@ public:
 
   void operator()(const ast::VariableDefinitionNode& variable_definition);
 
+  void operator()(const ast::LvalueDereferenceNode& lvalue);
+
+  void operator()(const ast::TypeNode& type);
+
   void operator()(const ast::FunctionDefinitionNode& function_definition);
 
   void operator()(const ast::Program& program);

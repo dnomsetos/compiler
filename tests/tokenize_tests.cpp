@@ -53,10 +53,10 @@ TEST(SimpleTokenizerTests, MultipleSymbolsMultiChar) {
       TokenInfo{Equal{}, Position(1, 7, 2)},
       TokenInfo{Plus{}, Position(1, 10, 1)},
       TokenInfo{Minus{}, Position(1, 12, 1)},
-      TokenInfo{Multiply{}, Position(1, 14, 1)},
+      TokenInfo{Asterisk{}, Position(1, 14, 1)},
       TokenInfo{Divide{}, Position(1, 16, 1)},
       TokenInfo{Mod{}, Position(1, 18, 1)},
-      TokenInfo{BitwiseAnd{}, Position(1, 20, 1)},
+      TokenInfo{Ampersand{}, Position(1, 20, 1)},
       TokenInfo{BitwiseOr{}, Position(1, 22, 1)},
       TokenInfo{BitwiseXor{}, Position(1, 24, 1)},
       TokenInfo{Semicolon{}, Position(1, 26, 1)},
@@ -229,8 +229,8 @@ TEST(LiteralTests, EmptyString) {
   auto tokens = tokenize(code);
 
   std::deque<TokenInfo> expected{
-      TokenInfo{
-          StringLiteral{.value = std::string("")}, Position(1, 1, code.size())},
+      TokenInfo{StringLiteral{.value = std::string("")},
+                Position(1, 1, code.size())},
       TokenInfo{EOFToken{}, Position(1, 3, 0)}};
 
   expect_tokens_eq(tokens, expected);
@@ -244,8 +244,8 @@ TEST(LiteralTests, StringWithSpacesAndSymbols) {
   std::string expected_value = " a b !@# ";
 
   std::deque<TokenInfo> expected{
-      TokenInfo{
-          StringLiteral{.value = expected_value}, Position(1, 1, code.size())},
+      TokenInfo{StringLiteral{.value = expected_value},
+                Position(1, 1, code.size())},
       TokenInfo{EOFToken{},
                 Position(1, static_cast<std::size_t>(code.size() + 1), 0)}};
 
@@ -280,8 +280,8 @@ TEST(LiteralTests, EscapedCharacters) {
   auto tokens = tokenize(code);
 
   std::deque<TokenInfo> expected{
-      TokenInfo{
-          StringLiteral{.value = expected_value}, Position(1, 1, code.size())},
+      TokenInfo{StringLiteral{.value = expected_value},
+                Position(1, 1, code.size())},
       TokenInfo{EOFToken{},
                 Position(1, static_cast<std::size_t>(code.size() + 1), 0)},
   };
@@ -303,8 +303,8 @@ TEST(LiteralTests, EscapedQuoteAtEnd) {
   auto tokens = tokenize(code);
 
   std::deque<TokenInfo> expected{
-      TokenInfo{
-          StringLiteral{.value = expected_value}, Position(1, 1, code.size())},
+      TokenInfo{StringLiteral{.value = expected_value},
+                Position(1, 1, code.size())},
       TokenInfo{EOFToken{},
                 Position(1, static_cast<std::size_t>(code.size() + 1), 0)}};
 
@@ -319,8 +319,8 @@ TEST(LiteralTests, StringContainingEscapedBackslashAndQuote) {
   auto tokens = tokenize(code);
 
   std::deque<TokenInfo> expected{
-      TokenInfo{
-          StringLiteral{.value = expected_value}, Position(1, 1, code.size())},
+      TokenInfo{StringLiteral{.value = expected_value},
+                Position(1, 1, code.size())},
       TokenInfo{EOFToken{},
                 Position(1, static_cast<std::size_t>(code.size() + 1), 0)}};
 

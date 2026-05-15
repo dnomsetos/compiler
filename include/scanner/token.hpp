@@ -40,8 +40,8 @@ namespace tkn {
 #define GENERATE_BINARY_OPERATION(name, op)                                    \
   struct name {                                                                \
     friend bool operator==(const name& left, const name& right) = default;     \
-    inline static std::function<calc_result_t(                                 \
-        const calc_result_t&, const calc_result_t&)>                           \
+    inline static std::function<calc_result_t(const calc_result_t&,            \
+                                              const calc_result_t&)>           \
         binary_operation = [](auto&& l, auto&& r) -> calc_result_t {           \
       return std::visit(                                                       \
           [](auto&& l, auto&& r) -> calc_result_t {                            \
@@ -64,8 +64,8 @@ namespace tkn {
 #define GENERATE_UNIVERSAL_OPERATION(name, op)                                 \
   struct name {                                                                \
     friend bool operator==(const name& left, const name& right) = default;     \
-    inline static std::function<calc_result_t(                                 \
-        const calc_result_t&, const calc_result_t&)>                           \
+    inline static std::function<calc_result_t(const calc_result_t&,            \
+                                              const calc_result_t&)>           \
         binary_operation = [](const calc_result_t& l,                          \
                               const calc_result_t& r) -> calc_result_t {       \
       return std::visit(                                                       \
@@ -123,7 +123,7 @@ GENERATE_UNIVERSAL_OPERATION(Minus, -)
 GENERATE_BINARY_OPERATION(LogicalAnd, &&)
 GENERATE_BINARY_OPERATION(Plus, +)
 GENERATE_BINARY_OPERATION(LogicalOr, ||)
-GENERATE_BINARY_OPERATION(Multiply, *)
+GENERATE_BINARY_OPERATION(Asterisk, *)
 GENERATE_BINARY_OPERATION(Divide, /)
 GENERATE_BINARY_OPERATION(Mod, %)
 GENERATE_BINARY_OPERATION(Equal, ==)
@@ -133,7 +133,7 @@ GENERATE_BINARY_OPERATION(Greater, >)
 GENERATE_BINARY_OPERATION(LessEqual, <=)
 GENERATE_BINARY_OPERATION(GreaterEqual, >=)
 GENERATE_BINARY_OPERATION(Assignment, =)
-GENERATE_BINARY_OPERATION(BitwiseAnd, &)
+GENERATE_BINARY_OPERATION(Ampersand, &)
 GENERATE_BINARY_OPERATION(BitwiseOr, |)
 GENERATE_BINARY_OPERATION(BitwiseXor, ^)
 GENERATE_BINARY_OPERATION(LeftShift, <<)
@@ -141,6 +141,8 @@ GENERATE_BINARY_OPERATION(RightShift, >>)
 GENERATE_UNARY_OPERATION(Not, !)
 GENERATE_EMPTY_TOKEN(Fn)
 GENERATE_EMPTY_TOKEN(Let)
+GENERATE_EMPTY_TOKEN(Static)
+GENERATE_EMPTY_TOKEN(Const)
 GENERATE_EMPTY_TOKEN(Break)
 GENERATE_EMPTY_TOKEN(Continue)
 GENERATE_EMPTY_TOKEN(Return)
@@ -158,6 +160,7 @@ GENERATE_EMPTY_TOKEN(RightBrace)
 GENERATE_EMPTY_TOKEN(LeftParent)
 GENERATE_EMPTY_TOKEN(RightParent)
 GENERATE_EMPTY_TOKEN(Comma)
+GENERATE_EMPTY_TOKEN(Mut)
 GENERATE_EMPTY_TOKEN(EOFToken)
 
 struct Label {
@@ -216,25 +219,31 @@ struct BoolLiteral {
 using LiteralTuple = TypeTuple<CharLiteral, IntLiteral, FloatLiteral,
                                BoolLiteral, StringLiteral>;
 
-using UnaryOperatorTuple = TypeTuple<Minus, Not>;
+using UnaryOperatorTuple = TypeTuple<Ampersand, Asterisk, Minus, Not>;
 
 using LogicalOperatorTuple = TypeTuple<LogicalAnd, LogicalOr, Not>;
 
-using HighPriorityArithmeticOperatorTuple = TypeTuple<Multiply, Divide, Mod>;
+using HighPriorityArithmeticOperatorTuple = TypeTuple<Asterisk, Divide, Mod>;
 
 using LowPriorityArithmeticOperatorTuple = TypeTuple<Plus, Minus>;
 
 using ComparisonOperatorTuple =
     TypeTuple<Less, Greater, LessEqual, GreaterEqual, Equal, NotEqual>;
 
-using BitwiseOperatorTuple = TypeTuple<BitwiseAnd, BitwiseOr, BitwiseXor>;
+using BitwiseOperatorTuple = TypeTuple<Ampersand, BitwiseOr, BitwiseXor>;
 
 using ShiftOperatorTuple = TypeTuple<LeftShift, RightShift>;
 
 using HelperTuple = TypeTuple<Arrow, Semicolon, Colon, Comma, LeftBrace,
                               RightBrace, LeftParent, RightParent, EOFToken>;
 
-using KeywordsTuple = TypeTuple<Fn, Let, If, Else, Loop, True, False>;
+using VariableDefinitionTuple = TypeTuple<Let, Static, Const>;
+
+using ControlFlowTuple = TypeTuple<If, Else, Loop>;
+
+using KeywordsTuple =
+    type_tuple_concat_t<VariableDefinitionTuple, ControlFlowTuple,
+                        TypeTuple<Mut, Fn, True, False>>;
 
 using InterruptTuple = TypeTuple<Break, Continue, Return>;
 

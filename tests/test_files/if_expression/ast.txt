@@ -1,8 +1,8 @@
 function definition: 
   name: test
   argument list: 
-    argument with name a with type i32
-  return type: u32
+    argument with name a with type     i32
+  return type:   u32
   body: 
     statement: 
       variable definition: 

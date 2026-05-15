@@ -1,9 +1,9 @@
 function definition: 
   name: add
   argument list: 
-    argument with name a with type i64
-    argument with name b with type f64
-  return type: f64
+    argument with name a with type     i64
+    argument with name b with type     f64
+  return type:   f64
   body: 
     return value: 
       expression: 
@@ -41,9 +41,9 @@ function definition:
 function definition: 
   name: compute
   argument list: 
-    argument with name a with type i32
-    argument with name b with type f32
-  return type: f32
+    argument with name a with type     i32
+    argument with name b with type     f32
+  return type:   f32
   body: 
     return value: 
       expression: 
@@ -104,7 +104,7 @@ function definition:
 function definition: 
   name: strange_func
   argument list is empty
-  return type: f32
+  return type:   f32
   body: 
     return value: 
       expression: 

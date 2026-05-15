@@ -30,6 +30,23 @@ void TypeChecker::visit(const ast::LiteralNode& literal) {
   }
 }
 
+void TypeChecker::visit(const ast::LvalueDereferenceNode& lvalue) {
+  if (lvalue.type_id >= tp::basic_type_count) {
+    std::cerr << "TypeChecker::visit: type_id out of range at " << lvalue
+              << std::endl;
+    throw std::runtime_error("TypeChecker::visit: type_id out of range");
+  }
+}
+
+void TypeChecker::visit(const ast::LvalueExpressionNode& lvalue) {
+  if (lvalue.type_id >= tp::basic_type_count) {
+    std::cerr << "LvalueExpressionNode" << std::endl;
+    std::cerr << "TypeChecker::visit: type_id out of range at " << lvalue
+              << std::endl;
+    throw std::runtime_error("TypeChecker::visit: type_id out of range");
+  }
+}
+
 void TypeChecker::visit(const ast::FunctionCallNode& function_call) {
   if (function_call.type_id >= tp::basic_type_count) {
     std::cerr << "TypeChecker::visit: type_id out of range at " << function_call
