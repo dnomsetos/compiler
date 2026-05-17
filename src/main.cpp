@@ -23,7 +23,9 @@ const char* skip_empty_arg = "--skip_empty";
 const char* out_file_arg = "--file";
 
 void print_ast(const std::string& code, std::ostream& out, bool skip_empty) {
-  out << "Printing AST\n";
+  if (out.rdbuf() == std::cout.rdbuf()) {
+    out << "Printing AST\n";
+  }
 
   auto tokens = tokenize(code);
 
@@ -55,13 +57,15 @@ void semantic(const std::string& code) {
   SemanticVisitor visitor(type_store, global_symbol_table);
   visitor.visit(*ast.value().first);
 
-  TypeChecker type_checker;
+  TypeChecker type_checker(type_store);
   type_checker.visit(*ast.value().first);
 }
 
 void build_ir(const std::string& code, const std::string& module_name,
               std::ostream& out = std::cout) {
-  std::cout << "Building IR\n";
+  if (out.rdbuf() == std::cout.rdbuf()) {
+    out << "Building IR\n";
+  }
 
   auto tokens = tokenize(code);
   auto ast = parse_program(tokens.begin(), tokens.end());
@@ -77,7 +81,7 @@ void build_ir(const std::string& code, const std::string& module_name,
   SemanticVisitor semantic_visitor(type_store, global_symbol_table);
   semantic_visitor.visit(*ast.value().first);
 
-  TypeChecker type_checker;
+  TypeChecker type_checker(type_store);
   type_checker.visit(*ast.value().first);
 
   BuildVisitor ir_visitor(module_name, type_store);
@@ -104,7 +108,7 @@ void emit_object(const std::string& code, const std::string& module_name,
   SemanticVisitor semantic_visitor(type_store, global_symbol_table);
   semantic_visitor.visit(*ast.value().first);
 
-  TypeChecker type_checker;
+  TypeChecker type_checker(type_store);
   type_checker.visit(*ast.value().first);
 
   BuildVisitor ir_visitor(module_name, type_store);

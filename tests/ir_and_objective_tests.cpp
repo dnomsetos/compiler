@@ -13,7 +13,8 @@
   "simple", "different_types", "if_expression", "if_elif_statement",           \
       "big_expression", "simple_cast", "simple_block_expression",              \
       "big_block_expression", "loop_expression", "loop_labels",                \
-      "mini_program", "strange_situation", "declarations_without_definitions"
+      "mini_program", "strange_situation", "declarations_without_definitions", \
+      "simple_references", "hard_references", "mutable_references"
 
 class IrTests : public testing::TestWithParam<std::string> {};
 class ObjectiveTests : public testing::TestWithParam<std::string> {};

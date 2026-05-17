@@ -1,6 +1,6 @@
 fn func(a: i32, b: i32) -> u64 {
     let sum = (a + b) as u64;
-    let scaled = sum * (b as u64);
+    let mut scaled = sum * (b as u64);
 
     if scaled > 100 as u64 {
         scaled = 100 as u64;

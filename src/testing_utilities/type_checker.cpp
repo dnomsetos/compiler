@@ -3,8 +3,25 @@
 #include <semantic_analysis/symbol_table.hpp>
 #include <testing_utilities/type_checker.hpp>
 
+bool TypeChecker::is_concrete(tp::TypeId type_id) const {
+  if (type_id == tp::no_type_id) {
+    return false;
+  }
+  if (type_id < tp::basic_type_count) {
+    return true;
+  }
+
+  return std::visit(
+      [](auto&& val) -> bool {
+        using T = std::decay_t<decltype(val)>;
+        return std::is_same_v<T, tp::ReferenceType> ||
+               std::is_same_v<T, tp::FunctionType>;
+      },
+      type_store_.get_type(type_id).type);
+}
+
 void TypeChecker::visit(const ast::IdentifierNode& identifier) {
-  if (identifier.type_id >= tp::basic_type_count) {
+  if (!is_concrete(identifier.type_id)) {
     std::cerr << "TypeChecker::visit: type_id out of range at " << identifier
               << "with val " << identifier.type_id << std::endl;
     throw std::runtime_error("TypeChecker::visit: type_id out of range");
@@ -23,7 +40,7 @@ void TypeChecker::visit(const ast::IdentifierNode& identifier) {
 }
 
 void TypeChecker::visit(const ast::LiteralNode& literal) {
-  if (literal.type_id >= tp::basic_type_count) {
+  if (!is_concrete(literal.type_id)) {
     std::cerr << "TypeChecker::visit: type_id out of range at " << literal
               << std::endl;
     throw std::runtime_error("TypeChecker::visit: type_id out of range");
@@ -31,7 +48,7 @@ void TypeChecker::visit(const ast::LiteralNode& literal) {
 }
 
 void TypeChecker::visit(const ast::LvalueDereferenceNode& lvalue) {
-  if (lvalue.type_id >= tp::basic_type_count) {
+  if (!is_concrete(lvalue.type_id)) {
     std::cerr << "TypeChecker::visit: type_id out of range at " << lvalue
               << std::endl;
     throw std::runtime_error("TypeChecker::visit: type_id out of range");
@@ -39,7 +56,7 @@ void TypeChecker::visit(const ast::LvalueDereferenceNode& lvalue) {
 }
 
 void TypeChecker::visit(const ast::LvalueExpressionNode& lvalue) {
-  if (lvalue.type_id >= tp::basic_type_count) {
+  if (!is_concrete(lvalue.type_id)) {
     std::cerr << "LvalueExpressionNode" << std::endl;
     std::cerr << "TypeChecker::visit: type_id out of range at " << lvalue
               << std::endl;
@@ -48,7 +65,7 @@ void TypeChecker::visit(const ast::LvalueExpressionNode& lvalue) {
 }
 
 void TypeChecker::visit(const ast::FunctionCallNode& function_call) {
-  if (function_call.type_id >= tp::basic_type_count) {
+  if (!is_concrete(function_call.type_id)) {
     std::cerr << "TypeChecker::visit: type_id out of range at " << function_call
               << std::endl;
     throw std::runtime_error("TypeChecker::visit: type_id out of range");
@@ -60,17 +77,11 @@ void TypeChecker::visit(const ast::FunctionCallNode& function_call) {
 }
 
 void TypeChecker::visit(const ast::ExpressionNode& expression) {
-  if (expression.type_id >= tp::basic_type_count) {
-    std::cerr << "TypeChecker::visit: type_id out of range at " << expression
-              << std::endl;
-    throw std::runtime_error("TypeChecker::visit: type_id out of range");
-  }
-
   std::visit([this](auto&& val) { visit(val); }, *expression.node);
 }
 
 void TypeChecker::visit(const ast::BlockExpressionNode& expression) {
-  if (expression.type_id >= tp::basic_type_count) {
+  if (!is_concrete(expression.type_id)) {
     std::cerr << "TypeChecker::visit: type_id out of range at " << expression
               << std::endl;
     throw std::runtime_error("TypeChecker::visit: type_id out of range");
@@ -86,7 +97,7 @@ void TypeChecker::visit(const ast::BlockExpressionNode& expression) {
 }
 
 void TypeChecker::visit(const ast::IfExpressionNode& expression) {
-  if (expression.type_id >= tp::basic_type_count) {
+  if (!is_concrete(expression.type_id)) {
     std::cerr << "TypeChecker::visit: type_id out of range at " << expression
               << std::endl;
     throw std::runtime_error("TypeChecker::visit: type_id out of range");
@@ -107,7 +118,7 @@ void TypeChecker::visit(const ast::IfExpressionNode& expression) {
 }
 
 void TypeChecker::visit(const ast::AssignmentNode& assignment) {
-  if (assignment.type_id >= tp::basic_type_count) {
+  if (!is_concrete(assignment.type_id)) {
     std::cerr << "TypeChecker::visit: type_id out of range at " << assignment
               << std::endl;
     throw std::runtime_error("TypeChecker::visit: type_id out of range");
@@ -118,7 +129,7 @@ void TypeChecker::visit(const ast::AssignmentNode& assignment) {
 }
 
 void TypeChecker::visit(const ast::LoopExpressionNode& loop) {
-  if (loop.type_id >= tp::basic_type_count) {
+  if (!is_concrete(loop.type_id)) {
     std::cerr << "TypeChecker::visit: type_id out of range at " << loop
               << std::endl;
     throw std::runtime_error("TypeChecker::visit: type_id out of range");
@@ -146,7 +157,7 @@ void TypeChecker::visit(const ast::ReturnStatementNode& return_stmt) {
 template <typename BinaryNode>
   requires is_in_type_tuple_v<BinaryNode, ast::BinaryNodeTuple>
 void TypeChecker::visit(const BinaryNode& binary_node) {
-  if (binary_node.type_id >= tp::basic_type_count) {
+  if (!is_concrete(binary_node.type_id)) {
     std::cerr << "TypeChecker::visit: type_id out of range at " << binary_node
               << std::endl;
     throw std::runtime_error("TypeChecker::visit: type_id out of range");
@@ -159,7 +170,7 @@ void TypeChecker::visit(const BinaryNode& binary_node) {
 }
 
 void TypeChecker::visit(const ast::CastNode& cast_node) {
-  if (cast_node.type_id >= tp::basic_type_count) {
+  if (!is_concrete(cast_node.type_id)) {
     std::cerr << "TypeChecker::visit: type_id out of range at " << cast_node
               << std::endl;
     throw std::runtime_error("TypeChecker::visit: type_id out of range");
@@ -169,7 +180,7 @@ void TypeChecker::visit(const ast::CastNode& cast_node) {
 }
 
 void TypeChecker::visit(const ast::UnaryNode& unary_node) {
-  if (unary_node.type_id >= tp::basic_type_count) {
+  if (!is_concrete(unary_node.type_id)) {
     std::cerr << "TypeChecker::visit: type_id out of range at " << unary_node
               << std::endl;
     throw std::runtime_error("TypeChecker::visit: type_id out of range");
@@ -179,7 +190,7 @@ void TypeChecker::visit(const ast::UnaryNode& unary_node) {
 }
 
 void TypeChecker::visit(const ast::PrimaryNode& primary_node) {
-  if (primary_node.type_id >= tp::basic_type_count) {
+  if (!is_concrete(primary_node.type_id)) {
     std::cerr << "TypeChecker::visit: type_id out of range at " << primary_node
               << std::endl;
     throw std::runtime_error("TypeChecker::visit: type_id out of range");

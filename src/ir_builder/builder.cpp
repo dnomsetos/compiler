@@ -414,20 +414,32 @@ void BuildVisitor::visit(const ast::LoopExpressionNode& loop) {
 
 void BuildVisitor::visit(const ast::AssignmentNode& assignment) {
   visit(*assignment.right);
+  llvm::Value* rhs = current_value_;
 
-  if (std::holds_alternative<ast::IdentifierNode>(*assignment.left->lvalue)) {
-    auto& identifier = std::get<ast::IdentifierNode>(*assignment.left->lvalue);
+  visit_lvalue_ptr(*assignment.left);
+  llvm::Value* dest_ptr = current_value_;
 
-    const Symbol* symbol =
-        assignment.table->get_variable_symbol(identifier.identifier->name);
+  builder_.CreateStore(rhs, dest_ptr);
 
-    builder_.CreateStore(
-        current_value_,
-        variables_names_.at({symbol->scope, identifier.identifier->name}));
+  llvm::StructType* empty_tuple = llvm::StructType::get(context_, {});
+  current_value_ = llvm::ConstantStruct::get(empty_tuple, {});
+}
 
-    llvm::StructType* empty_tuple = llvm::StructType::get(context_, {});
-    current_value_ = llvm::ConstantStruct::get(empty_tuple, {});
-  }
+void BuildVisitor::visit_lvalue_ptr(const ast::LvalueExpressionNode& lvalue) {
+  std::visit([&](auto&& node) { visit_lvalue_ptr(node); }, *lvalue.lvalue);
+}
+
+void BuildVisitor::visit_lvalue_ptr(const ast::IdentifierNode& identifier) {
+  const Symbol* symbol =
+      identifier.table->get_variable_symbol(identifier.identifier->name);
+
+  current_value_ =
+      variables_names_.at({symbol->scope, identifier.identifier->name});
+}
+
+void BuildVisitor::visit_lvalue_ptr(
+    const ast::LvalueDereferenceNode& dereference) {
+  std::visit([&](auto&& ref_node) { visit(ref_node); }, *dereference.reference);
 }
 
 void BuildVisitor::visit(const ast::LogicalOrNode& node) {
@@ -783,11 +795,38 @@ void BuildVisitor::visit(const ast::CastNode& cast_node) {
 }
 
 void BuildVisitor::visit(const ast::UnaryNode& unary_node) {
-  visit(*unary_node.primary);
-
   if (!unary_node.op.has_value()) {
+    visit(*unary_node.primary);
     return;
   }
+
+  if (std::holds_alternative<tkn::Ampersand>(*unary_node.op.value())) {
+    std::visit(
+        [&](auto&& primary_val) {
+          using T = std::decay_t<decltype(primary_val)>;
+          if constexpr (std::is_same_v<T, ast::IdentifierNode>) {
+            const Symbol* symbol = primary_val.table->get_variable_symbol(
+                primary_val.identifier->name);
+            current_value_ = variables_names_.at(
+                {symbol->scope, primary_val.identifier->name});
+          } else {
+            visit(*unary_node.primary);
+          }
+        },
+        *unary_node.primary->primary);
+    return;
+  }
+
+  if (std::holds_alternative<tkn::Asterisk>(*unary_node.op.value())) {
+    visit(*unary_node.primary);
+    llvm::Value* ptr = current_value_;
+    current_value_ = builder_.CreateLoad(
+        get_llvm_type(type_store_, builder_, context_, unary_node.type_id),
+        ptr);
+    return;
+  }
+
+  visit(*unary_node.primary);
 
   std::visit(
       [&](auto&& val) {

@@ -43,8 +43,7 @@ function definition:
                                                           primary: 
                                                             identifier: b
                               to type: 
-                                identifier: u64
-    statement: 
+                                u64    statement: 
       variable definition: 
         name: scaled
         value: 
@@ -81,8 +80,7 @@ function definition:
                                                           primary: 
                                                             identifier: b
                                                         to type: 
-                                                          identifier: u64
-    statement: 
+                                                          u64    statement: 
       if expression: 
         if condition: 
           expression: 
@@ -111,8 +109,7 @@ function definition:
                                   primary: 
                                     literal: 100
                                 to type: 
-                                  identifier: u64
-        if body: 
+                                  u64        if body: 
           block expression: 
             statement: 
               expression: 
@@ -134,8 +131,7 @@ function definition:
                                             primary: 
                                               literal: 100
                                           to type: 
-                                            identifier: u64
-        else body: 
+                                            u64        else body: 
           block expression: 
             block value: 
               expression: 
@@ -172,8 +168,7 @@ function definition:
                                                                         primary: 
                                                                           identifier: scaled
                                                                       to type: 
-                                                                        identifier: i64
-                                        binary operation: -
+                                                                        i64                                        binary operation: -
                                         multiplication: 
                                           cast: 
                                             unary: 
@@ -203,8 +198,7 @@ function definition:
                                 primary: 
                                   identifier: scaled
                               to type: 
-                                identifier: u64
-  function definition: 
+                                u64  function definition: 
     name: main
     argument list is empty
     return type is void

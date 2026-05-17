@@ -213,4 +213,4 @@ function definition:
                                                                                             primary: 
                                                                                               literal: 239
                                                               to type: 
-                                                                identifier: u32
+                                                                u32

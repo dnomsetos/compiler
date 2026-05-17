@@ -71,6 +71,12 @@ public:
   void visit(const ast::IdentifierNode& identifier);
   void visit(const ast::LiteralNode& literal);
 
+  // Returns the pointer (llvm::Value*) to the storage that the lvalue refers
+  // to, without loading it. Sets current_value_ to that pointer.
+  void visit_lvalue_ptr(const ast::LvalueExpressionNode& lvalue);
+  void visit_lvalue_ptr(const ast::IdentifierNode& identifier);
+  void visit_lvalue_ptr(const ast::LvalueDereferenceNode& dereference);
+
   void print_module(std::ostream& out);
 
   void emit_object(const std::string& output_path);

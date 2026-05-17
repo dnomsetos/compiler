@@ -159,8 +159,7 @@ function definition:
                                   primary: 
                                     identifier: y
                                 to type: 
-                                  identifier: u32
-    function definition: 
+                                  u32    function definition: 
       name: main
       argument list is empty
       return type is void
@@ -212,4 +211,4 @@ function definition:
                                                                                           primary: 
                                                                                             literal: 42
                                                             to type: 
-                                                              identifier: u64
+                                                              u64

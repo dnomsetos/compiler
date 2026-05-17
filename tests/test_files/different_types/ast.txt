@@ -269,16 +269,14 @@ function definition:
                               primary: 
                                 identifier: a
                             to type: 
-                              identifier: u8
-                        binary operation: +
+                              u8                        binary operation: +
                         multiplication: 
                           cast: 
                             unary: 
                               primary: 
                                 identifier: c
                             to type: 
-                              identifier: u8
-function definition: 
+                              u8function definition: 
   name: main
   argument list is empty
   return type is void
@@ -401,4 +399,4 @@ function definition:
                                                                                       primary: 
                                                                                         literal: a
                                                         to type: 
-                                                          identifier: u16
+                                                          u16

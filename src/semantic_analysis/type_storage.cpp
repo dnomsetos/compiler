@@ -1,3 +1,4 @@
+#include "semantic_analysis/types.hpp"
 #include <iostream>
 #include <stacktrace>
 
@@ -35,8 +36,48 @@ tp::TypeId TypeStore::get_function(tp::TypeId return_type,
   return type_id;
 }
 
+tp::TypeId TypeStore::get_reference_type(tp::TypeId base_type,
+                                         bool is_mutable) {
+
+  if (base_type == tp::no_type_id) {
+    throw std::runtime_error(
+        "Call TypeStore::get_reference_type with not_type_id");
+  }
+
+  tp::ReferenceType reference_type{.base_type = base_type,
+                                   .is_mutable = is_mutable};
+
+  if (reference_types_.contains(reference_type)) {
+    return reference_types_.at(reference_type);
+  }
+
+  tp::TypeId type_id = types_.size() + basic_types_.size();
+
+  types_.emplace_back(std::move(reference_type));
+
+  reference_types_[reference_type] = type_id;
+
+  return type_id;
+}
+
 tp::TypeId TypeStore::get_basic_type(tp::BasicTypeVariant type) {
   return type.index(); // invariant
+}
+
+tp::TypeId TypeStore::get_type_id_by_ast_type(ast::TypeNode& type) {
+  auto optional_type = tp::get_type(type.type_name->name);
+
+  if (!optional_type.has_value()) {
+    throw std::runtime_error("Unknown type: " + type.type_name->name);
+  }
+
+  tp::TypeId base_type = get_basic_type(optional_type.value());
+
+  if (!type.is_reference) {
+    return base_type;
+  }
+
+  return get_reference_type(base_type, type.is_mutable);
 }
 
 tp::TypeId TypeStore::new_literal_type(tp::LiteralVariant&& literal) {
@@ -61,6 +102,12 @@ tp::TypeId TypeStore::resolve(tp::TypeId type_id) {
   }
 
   if (type_id < basic_types_.size()) {
+    return type_id;
+  }
+
+  const auto& raw = types_.at(type_id - basic_types_.size()).type;
+  if (std::holds_alternative<tp::ReferenceType>(raw) ||
+      std::holds_alternative<tp::FunctionType>(raw)) {
     return type_id;
   }
 
@@ -155,7 +202,16 @@ bool TypeStore::unify(tp::TypeId type1, tp::TypeId type2) {
                 }
               }
               return false;
+            } else if constexpr (std::is_same_v<T1, tp::ReferenceType> &&
+                                 std::is_same_v<T2, tp::ReferenceType>) {
+              if (type1.is_mutable && !type2.is_mutable) {
+                return false;
+              }
+              return unify(type1.base_type, type2.base_type);
             }
+
+            // std::cerr << type1 << type2 << std::endl;
+            // std::cerr << std::stacktrace::current() << std::endl;
 
             throw std::logic_error("Unreachable");
           },
@@ -184,6 +240,14 @@ void TypeStore::add_ast_type(ast::ASTTypeNode* ast_type) {
 
 void TypeStore::add_ast_var(ast::IdentifierNode* ast_var) {
   ast_vars_.push_back(ast_var);
+}
+
+void TypeStore::add_ast_deref(ast::LvalueDereferenceNode* deref) {
+  ast_derefs_.push_back(deref);
+}
+
+void TypeStore::add_ast_lvalue_expr(ast::LvalueExpressionNode* lvalue_expr) {
+  ast_lvalue_exprs_.push_back(lvalue_expr);
 }
 
 bool TypeStore::is_integer_type(tp::TypeId type_id) {
@@ -230,6 +294,20 @@ bool TypeStore::is_float_type(tp::TypeId type_id) {
       get_type(type_id).type);
 }
 
+bool TypeStore::is_reference_type(tp::TypeId type_id) {
+  if (type_id == tp::no_type_id) {
+    return false;
+  }
+
+  return std::visit(
+      [](auto&& val) -> bool {
+        using T = std::decay_t<decltype(val)>;
+
+        return std::is_same_v<T, tp::ReferenceType>;
+      },
+      get_type(type_id).type);
+}
+
 void TypeStore::handle_ast_types() {
   for (auto* node : ast_vars_) {
     tp::TypeId root = resolve(node->type_id);
@@ -252,6 +330,9 @@ void TypeStore::handle_ast_types() {
       node->type_id = get_basic_type(tp::I32{});
     } else if (std::holds_alternative<tp::FloatLiteral>(type_variant)) {
       node->type_id = get_basic_type(tp::F32{});
+    } else if (std::holds_alternative<tp::ReferenceType>(type_variant) ||
+               std::holds_alternative<tp::FunctionType>(type_variant)) {
+      node->type_id = root;
     } else {
       throw std::runtime_error("Strange type");
     }
@@ -274,7 +355,74 @@ void TypeStore::handle_ast_types() {
     } else if (std::holds_alternative<tp::FloatLiteral>(type_variant)) {
       node->type_id = get_basic_type(tp::F32{});
     } else if (std::holds_alternative<tp::UndefinedType>(type_variant)) {
-      throw std::runtime_error("Strange type");
+      throw std::runtime_error("Strange type: unresolved undefined type");
+    } else if (std::holds_alternative<tp::ReferenceType>(type_variant)) {
+      // Reference types are already concrete; keep node->type_id as-is.
+    } else if (std::holds_alternative<tp::FunctionType>(type_variant)) {
+      // Function types are already concrete; keep node->type_id as-is.
+    }
+  }
+
+  reference_types_.clear();
+  for (auto& tp : types_) {
+    if (!std::holds_alternative<tp::ReferenceType>(tp.type)) {
+      continue;
+    }
+    auto& ref = std::get<tp::ReferenceType>(tp.type);
+    tp::TypeId base = resolve(ref.base_type);
+    if (base >= basic_types_.size()) {
+      auto& base_variant = types_.at(base - basic_types_.size()).type;
+      if (std::holds_alternative<tp::IntLiteral>(base_variant)) {
+        base = get_basic_type(tp::I32{});
+      } else if (std::holds_alternative<tp::FloatLiteral>(base_variant)) {
+        base = get_basic_type(tp::F32{});
+      }
+    }
+    ref.base_type = base;
+  }
+  for (std::size_t i = 0; i < types_.size(); ++i) {
+    if (std::holds_alternative<tp::ReferenceType>(types_[i].type)) {
+      reference_types_[std::get<tp::ReferenceType>(types_[i].type)] =
+          basic_types_.size() + i;
+    }
+  }
+
+  for (auto* deref : ast_derefs_) {
+    tp::TypeId raw = deref->type_id;
+    if (raw == tp::no_type_id) {
+      continue;
+    }
+    if (raw < basic_types_.size()) {
+      continue;
+    }
+    tp::TypeId root = resolve(raw);
+    if (root < basic_types_.size()) {
+      deref->type_id = root;
+      continue;
+    }
+    auto& variant = types_.at(root - basic_types_.size()).type;
+    if (std::holds_alternative<tp::IntLiteral>(variant)) {
+      deref->type_id = get_basic_type(tp::I32{});
+    } else if (std::holds_alternative<tp::FloatLiteral>(variant)) {
+      deref->type_id = get_basic_type(tp::F32{});
+    }
+  }
+
+  for (auto* lvalue_expr : ast_lvalue_exprs_) {
+    tp::TypeId raw = lvalue_expr->type_id;
+    if (raw == tp::no_type_id || raw < basic_types_.size()) {
+      continue;
+    }
+    tp::TypeId root = resolve(raw);
+    if (root < basic_types_.size()) {
+      lvalue_expr->type_id = root;
+      continue;
+    }
+    auto& variant = types_.at(root - basic_types_.size()).type;
+    if (std::holds_alternative<tp::IntLiteral>(variant)) {
+      lvalue_expr->type_id = get_basic_type(tp::I32{});
+    } else if (std::holds_alternative<tp::FloatLiteral>(variant)) {
+      lvalue_expr->type_id = get_basic_type(tp::F32{});
     }
   }
 }

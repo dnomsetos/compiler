@@ -111,6 +111,7 @@ struct UnaryNode : ASTTypeNode {
   std::optional<
       alloc::pmr_unique_ptr<type_tuple_to_variant_t<tkn::UnaryOperatorTuple>>>
       op;
+  bool is_mut_ref = false;
 
   UnaryNode(alloc::pmr_unique_ptr<PrimaryNode>&& primary,
             const tkn::Position& position);
@@ -118,7 +119,7 @@ struct UnaryNode : ASTTypeNode {
 
 struct CastNode : ASTTypeNode {
   alloc::pmr_unique_ptr<UnaryNode> expression;
-  std::optional<alloc::pmr_unique_ptr<IdentifierNode>> type;
+  std::optional<alloc::pmr_unique_ptr<TypeNode>> type;
 
   CastNode(alloc::pmr_unique_ptr<UnaryNode>&& expression,
            const tkn::Position& position);
@@ -243,6 +244,7 @@ struct VariableDefinitionNode : ASTNode {
   alloc::pmr_unique_ptr<IdentifierNode> name;
   std::optional<alloc::pmr_unique_ptr<TypeNode>> type;
   std::optional<alloc::pmr_unique_ptr<ExpressionNode>> value;
+  bool is_mutable;
   bool is_global;
 
   VariableDefinitionNode(alloc::pmr_unique_ptr<IdentifierNode>&& name,

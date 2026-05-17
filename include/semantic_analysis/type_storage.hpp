@@ -21,6 +21,15 @@ struct FunctionTypeHash {
   }
 };
 
+struct ReferenceTypeHash {
+  std::size_t operator()(const tp::ReferenceType& f) const {
+    std::size_t h1 = std::hash<std::size_t>{}(f.base_type);
+    std::size_t h2 = std::hash<bool>{}(f.is_mutable);
+
+    return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+  }
+};
+
 class TypeStore {
 public:
   TypeStore() = default;
@@ -30,11 +39,15 @@ public:
   tp::TypeId get_function(tp::TypeId return_type = tp::no_type_id,
                           std::vector<tp::TypeId>&& args = {});
 
+  tp::TypeId get_reference_type(tp::TypeId base_type, bool is_mutable);
+
   tp::TypeId new_literal_type(tp::LiteralVariant&&);
 
   tp::TypeId new_undefined_type();
 
   tp::TypeId get_basic_type(tp::BasicTypeVariant);
+
+  tp::TypeId get_type_id_by_ast_type(ast::TypeNode&);
 
   tp::TypeId resolve(tp::TypeId type_id);
 
@@ -46,11 +59,17 @@ public:
 
   void add_ast_var(ast::IdentifierNode* ast_var);
 
+  void add_ast_deref(ast::LvalueDereferenceNode* deref);
+
+  void add_ast_lvalue_expr(ast::LvalueExpressionNode* lvalue_expr);
+
   bool is_integer_type(tp::TypeId type_id);
 
   bool is_signed_type(tp::TypeId type_id);
 
   bool is_float_type(tp::TypeId type_id);
+
+  bool is_reference_type(tp::TypeId type_id);
 
   void handle_ast_types();
 
@@ -71,6 +90,10 @@ private:
   std::vector<tp::Type> types_;
   std::unordered_map<tp::FunctionType, tp::TypeId, FunctionTypeHash>
       functions_types_;
+  std::unordered_map<tp::ReferenceType, tp::TypeId, ReferenceTypeHash>
+      reference_types_;
   std::vector<ast::ASTTypeNode*> ast_types_;
   std::vector<ast::IdentifierNode*> ast_vars_;
+  std::vector<ast::LvalueDereferenceNode*> ast_derefs_;
+  std::vector<ast::LvalueExpressionNode*> ast_lvalue_exprs_;
 };

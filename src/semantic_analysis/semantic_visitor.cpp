@@ -1,3 +1,5 @@
+#include "parser/ast.hpp"
+#include "semantic_analysis/symbol_table.hpp"
 #include <iostream>
 #include <ranges>
 
@@ -27,14 +29,8 @@ void SemanticVisitor::visit(ast::VariableDefinitionNode& variable_definition) {
   }
 
   if (variable_definition.type.has_value()) {
-    auto optional_type =
-        tp::get_type(variable_definition.type.value()->type_name->name);
-
-    if (!optional_type.has_value()) {
-      throw std::runtime_error("Unknown type");
-    }
-
-    declared_type = type_store_.get_basic_type(optional_type.value());
+    declared_type =
+        type_store_.get_type_id_by_ast_type(*variable_definition.type.value());
   }
 
   if (variable_definition.value.has_value()) {
@@ -80,8 +76,9 @@ void SemanticVisitor::visit(ast::VariableDefinitionNode& variable_definition) {
       .position = static_cast<tkn::Position>(*variable_definition.name),
       .type = declared_type,
       .scope = symbol_table_,
-      .definition = nullptr,
-      .is_defined = is_defined,
+      .symbol_info =
+          SymbolInfo{BasicTypeInfo{.is_mutable = variable_definition.is_mutable,
+                                   .is_defined = is_defined}},
   };
 
   symbol_table_->insert_variable(variable_definition.name->identifier->name,
@@ -97,14 +94,8 @@ void SemanticVisitor::visit(ast::FunctionDefinitionNode& function_definition) {
   tp::TypeId return_type = tp::no_type_id;
 
   if (function_definition.return_type != nullptr) {
-    auto optional_type =
-        tp::get_type(function_definition.return_type->type_name->name);
-
-    if (!optional_type.has_value()) {
-      throw std::runtime_error("Unknown type");
-    }
-
-    return_type = type_store_.get_basic_type(optional_type.value());
+    return_type =
+        type_store_.get_type_id_by_ast_type(*function_definition.return_type);
   } else {
     return_type = type_store_.get_basic_type(tp::Void{});
   }
@@ -121,21 +112,17 @@ void SemanticVisitor::visit(ast::FunctionDefinitionNode& function_definition) {
   std::vector<tp::TypeId> args;
 
   for (auto& [arg_name, arg_type] : function_definition.argument_list) {
-    // std::cout << "here" << std::endl;
-    auto optional_type = tp::get_type(arg_type.type_name->name);
-
-    if (!optional_type.has_value()) {
-      throw std::runtime_error("Unknown type");
-    }
-
-    tp::TypeId arg_type_id = type_store_.get_basic_type(optional_type.value());
+    tp::TypeId arg_type_id = type_store_.get_type_id_by_ast_type(arg_type);
 
     Symbol symbol{
         .position = static_cast<tkn::Position>(arg_name),
         .type = arg_type_id,
         .scope = symbol_table_,
-        .definition = &function_definition,
-        .is_defined = true,
+        .symbol_info = SymbolInfo{.info =
+                                      BasicTypeInfo{
+                                          .is_mutable = arg_type.is_mutable,
+                                          .is_defined = true,
+                                      }},
     };
 
     arg_name.table = symbol_table_;
@@ -144,7 +131,7 @@ void SemanticVisitor::visit(ast::FunctionDefinitionNode& function_definition) {
     symbol_table_->insert_variable(arg_name.identifier->name,
                                    std::move(symbol));
 
-    args.push_back(type_store_.get_basic_type(optional_type.value()));
+    args.push_back(arg_type_id);
   }
 
   // std::cout << "args size: " << args.size() << std::endl;
@@ -156,7 +143,8 @@ void SemanticVisitor::visit(ast::FunctionDefinitionNode& function_definition) {
       .position = *function_definition.name,
       .type = function_type,
       .scope = current_scope,
-      .definition = &function_definition,
+      .symbol_info =
+          SymbolInfo{.info = FunctionInfo{.definition = &function_definition}},
   };
 
   current_scope->insert_function(function_definition.name->identifier->name,
@@ -423,6 +411,19 @@ void SemanticVisitor::visit(ast::LoopExpressionNode& loop,
   }
 }
 
+void SemanticVisitor::visit(ast::LvalueExpressionNode& lvalue,
+                            tp::TypeId expected_type) {
+
+  lvalue.table = symbol_table_;
+
+  lvalue.type_id = std::visit(
+      [&](auto&& node) {
+        visit(node, expected_type);
+        return node.type_id;
+      },
+      *lvalue.lvalue);
+}
+
 void SemanticVisitor::visit(ast::AssignmentNode& assignment,
                             tp::TypeId expected_type) {
 
@@ -445,8 +446,24 @@ void SemanticVisitor::visit(ast::AssignmentNode& assignment,
             static_cast<tkn::Position>(*assignment.left));
 
     assignment.left->table = symbol_table_;
+    identifier.table = symbol_table_;
 
-    if (!symbol->is_defined) {
+    const SymbolInfo& symbol_info = symbol->symbol_info;
+
+    if (!std::holds_alternative<BasicTypeInfo>(symbol_info.info)) {
+      throw std::runtime_error("Cannot assign to non variable.");
+    }
+
+    const BasicTypeInfo& basic_type_info =
+        std::get<BasicTypeInfo>(symbol_info.info);
+
+    if (basic_type_info.is_defined && !basic_type_info.is_mutable) {
+      std::cout << assignment << std::endl;
+      throw std::runtime_error(
+          "Cannot assign to immutable variable (declare with `let mut`).");
+    }
+
+    if (!basic_type_info.is_defined) {
       symbol_table_->define_symbol(identifier.identifier->name);
 
       if (std::holds_alternative<tp::UndefinedType>(
@@ -461,9 +478,14 @@ void SemanticVisitor::visit(ast::AssignmentNode& assignment,
         symbol_table_->change_symbol_type(identifier.identifier->name,
                                           assignment.right->type_id);
 
+        identifier.type_id = assignment.right->type_id;
         type_store_.add_ast_var(&identifier);
 
         assignment.left->type_id = assignment.right->type_id;
+
+        if (assignment.left->type_id >= tp::basic_type_count) {
+          type_store_.add_ast_type(&*assignment.left);
+        }
 
         return;
       }
@@ -475,16 +497,59 @@ void SemanticVisitor::visit(ast::AssignmentNode& assignment,
       type_store_.add_ast_type(&*assignment.left);
     }
 
-    if (assignment.right->type_id < tp::basic_type_count) {
-      visit(*assignment.right, symbol->type);
-    } else {
-      visit(*assignment.right);
+    visit(*assignment.right, symbol->type);
 
-      if (!type_store_.unify(symbol->type, assignment.right->type_id)) {
-        throw std::runtime_error(
-            "Type mismatch in assignment. Expected type mismatch real type.");
-      }
+    if (!type_store_.unify(symbol->type, assignment.right->type_id)) {
+      throw std::runtime_error(
+          "Type mismatch in assignment. Expected type mismatch real type.");
     }
+
+    return;
+  }
+
+  auto& dereference =
+      std::get<ast::LvalueDereferenceNode>(*assignment.left->lvalue);
+
+  dereference.table = symbol_table_;
+  assignment.left->table = symbol_table_;
+
+  std::visit([&](auto&& ref_node) { visit(ref_node, tp::no_type_id); },
+             *dereference.reference);
+
+  tp::TypeId ref_type_id =
+      std::visit([](auto&& ref_node) -> tp::TypeId { return ref_node.type_id; },
+                 *dereference.reference);
+
+  const tp::Type& ref_type = type_store_.get_type(ref_type_id);
+  if (!std::holds_alternative<tp::ReferenceType>(ref_type.type)) {
+    throw std::runtime_error(
+        "Type mismatch in assignment: left side dereference is not a reference "
+        "type.");
+  }
+
+  const tp::ReferenceType& rtype = std::get<tp::ReferenceType>(ref_type.type);
+
+  if (!rtype.is_mutable) {
+    throw std::runtime_error("Cannot assign through immutable reference.");
+  }
+
+  dereference.type_id = rtype.base_type;
+  assignment.left->type_id = rtype.base_type;
+  type_store_.add_ast_deref(&dereference);
+  type_store_.add_ast_lvalue_expr(assignment.left.get());
+
+  visit(*assignment.right, rtype.base_type);
+
+  if (!type_store_.unify(rtype.base_type, assignment.right->type_id)) {
+    throw std::runtime_error(
+        "Type mismatch in assignment through reference: expected type mismatch "
+        "real type.");
+  }
+
+  if (expected_type != tp::no_type_id &&
+      !type_store_.unify(expected_type,
+                         type_store_.get_basic_type(tp::Void{}))) {
+    throw std::runtime_error("Type mismatch. Expected non void in assignment.");
   }
 }
 
@@ -736,14 +801,8 @@ void SemanticVisitor::visit(ast::CastNode& cast_node,
 
   visit(*cast_node.expression);
 
-  auto optional_cast_type =
-      tp::get_type(cast_node.type.value()->identifier->name);
-
-  if (!optional_cast_type.has_value()) {
-    throw std::runtime_error("Unknown type");
-  }
-
-  cast_node.type_id = type_store_.get_basic_type(optional_cast_type.value());
+  cast_node.type_id =
+      type_store_.get_type_id_by_ast_type(*cast_node.type.value());
 
   if (std::holds_alternative<tp::IntLiteral>(
           type_store_.get_type(cast_node.expression->type_id).type) ||
@@ -794,7 +853,8 @@ void SemanticVisitor::visit(ast::CastNode& cast_node,
               return false;
             }
           },
-          optional_cast_type.value(), real_expression_type.type)) {
+          type_store_.get_type(cast_node.type_id).type,
+          real_expression_type.type)) {
 
     throw std::runtime_error("Type mismatch in cast node. Cast type mismatch.");
   }
@@ -811,21 +871,75 @@ void SemanticVisitor::visit(ast::UnaryNode& unary_node,
                             tp::TypeId expected_type) {
   unary_node.table = symbol_table_;
 
-  visit(*unary_node.primary, expected_type);
+  if (!unary_node.op.has_value()) {
+    visit(*unary_node.primary, expected_type);
+    unary_node.type_id = unary_node.primary->type_id;
+    if (expected_type != tp::no_type_id &&
+        !type_store_.unify(expected_type, unary_node.type_id)) {
+      throw std::runtime_error(
+          "Type mismatch in unary node. Type mismatch with expected type.");
+    }
+    if (unary_node.type_id >= tp::basic_type_count) {
+      type_store_.add_ast_type(&unary_node);
+    }
+    return;
+  }
 
+  if (std::holds_alternative<tkn::Ampersand>(*unary_node.op.value())) {
+    visit(*unary_node.primary);
+
+    tp::TypeId base_type = unary_node.primary->type_id;
+    bool is_mut = unary_node.is_mut_ref;
+    unary_node.type_id = type_store_.get_reference_type(base_type, is_mut);
+
+    // std::cerr << unary_node << ' ' << expected_type << ' ' <<
+    // unary_node.type_id
+    // << std::endl;
+
+    if (expected_type != tp::no_type_id &&
+        !type_store_.unify(expected_type, unary_node.type_id)) {
+      throw std::runtime_error("Type mismatch in unary node. Reference type "
+                               "mismatch expected type.");
+    }
+
+    if (unary_node.type_id >= tp::basic_type_count) {
+      type_store_.add_ast_type(&unary_node);
+    }
+    return;
+  }
+
+  if (std::holds_alternative<tkn::Asterisk>(*unary_node.op.value())) {
+    visit(*unary_node.primary);
+
+    tp::TypeId ref_type_id = unary_node.primary->type_id;
+    const tp::Type& ref_type = type_store_.get_type(ref_type_id);
+
+    if (!std::holds_alternative<tp::ReferenceType>(ref_type.type)) {
+      throw std::runtime_error("Type mismatch in unary node. Operator * "
+                               "applicable only to references.");
+    }
+
+    unary_node.type_id = std::get<tp::ReferenceType>(ref_type.type).base_type;
+
+    if (expected_type != tp::no_type_id &&
+        !type_store_.unify(expected_type, unary_node.type_id)) {
+      throw std::runtime_error("Type mismatch in unary node. Dereference type "
+                               "mismatch expected type.");
+    }
+
+    if (unary_node.type_id >= tp::basic_type_count) {
+      type_store_.add_ast_type(&unary_node);
+    }
+    return;
+  }
+
+  visit(*unary_node.primary, expected_type);
   unary_node.type_id = unary_node.primary->type_id;
 
   if (expected_type != tp::no_type_id &&
       !type_store_.unify(expected_type, unary_node.type_id)) {
     throw std::runtime_error(
         "Type mismatch in unary node. Type mismatch with expected type.");
-  }
-
-  if (!unary_node.op.has_value()) {
-    if (unary_node.type_id >= tp::basic_type_count) {
-      type_store_.add_ast_type(&unary_node);
-    }
-    return;
   }
 
   auto& real_type = type_store_.get_type(unary_node.type_id);
@@ -860,13 +974,12 @@ void SemanticVisitor::visit(ast::PrimaryNode& primary_node,
                             tp::TypeId expected_type) {
   primary_node.table = symbol_table_;
 
-  std::visit(
-      [this, expected_type](auto& val) { this->visit(val, expected_type); },
+  primary_node.type_id = std::visit(
+      [this, expected_type](auto& val) {
+        this->visit(val, expected_type);
+        return val.type_id;
+      },
       *primary_node.primary);
-
-  primary_node.type_id =
-      std::visit([](auto&& val) -> tp::TypeId { return val.type_id; },
-                 *primary_node.primary);
 
   if (expected_type != tp::no_type_id &&
       !type_store_.unify(expected_type, primary_node.type_id)) {
@@ -877,6 +990,38 @@ void SemanticVisitor::visit(ast::PrimaryNode& primary_node,
   if (primary_node.type_id >= tp::basic_type_count) {
     type_store_.add_ast_type(&primary_node);
   }
+}
+
+void SemanticVisitor::visit(ast::LvalueDereferenceNode& dereference_node,
+                            tp::TypeId expected_type) {
+  dereference_node.table = symbol_table_;
+
+  tp::TypeId ref_type = tp::no_type_id;
+
+  std::visit(
+      [&](auto&& val) {
+        if (expected_type != tp::no_type_id) {
+          visit(val, type_store_.get_reference_type(expected_type, true));
+        } else {
+          visit(val);
+        }
+
+        ref_type = val.type_id;
+      },
+      *dereference_node.reference);
+
+  dereference_node.type_id = std::visit(
+      [&](auto&& val) -> tp::TypeId {
+        using T = std::decay_t<decltype(val)>;
+        if constexpr (!std::is_same_v<T, tp::ReferenceType>) {
+          throw std::logic_error("error in dereference visit");
+        } else {
+          return val.base_type;
+        }
+      },
+      type_store_.get_type(ref_type).type);
+
+  type_store_.add_ast_deref(&dereference_node);
 }
 
 void SemanticVisitor::visit(ast::FunctionCallNode& function_call,
@@ -921,6 +1066,10 @@ void SemanticVisitor::visit(ast::IdentifierNode& identifier_node,
 
     if (expected_type != tp::no_type_id &&
         !type_store_.unify(expected_type, identifier_node.type_id)) {
+
+      std::cerr << identifier_node << ' ' << identifier_node.type_id
+                << std::endl;
+
       throw std::runtime_error("Type mismatch in identifier node. Expected "
                                "type mismatch with variable type.");
     }

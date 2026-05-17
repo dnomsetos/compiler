@@ -318,4 +318,4 @@ function definition:
                                                                                                 primary: 
                                                                                                   literal: 67
                                                                   to type: 
-                                                                    identifier: u64
+                                                                    u64

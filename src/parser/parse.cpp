@@ -221,12 +221,27 @@ auto parse_function_definition(ParseIter begin)
 auto parse_variable_definition(ParseIter begin)
     -> ParseResult<ast::VariableDefinitionNode> {
 
-  if (!std::holds_alternative<tkn::Let>(begin->token_variant)) {
-    return std::unexpected(
-        UnexpectedToken{begin->position, tkn::Let{}, begin->token_variant});
+  bool is_global = false;
+
+  if (!std::holds_alternative<tkn::Let>(begin->token_variant) &&
+      !std::holds_alternative<tkn::Static>(begin->token_variant)) {
+
+    return std::unexpected(TryButCant{begin->position, nterm::Definition{}});
   }
 
-  auto identifier = parse_identifier(begin + 1);
+  if (std::holds_alternative<tkn::Static>(begin->token_variant)) {
+    is_global = true;
+  }
+  ++begin;
+
+  bool is_mutable = false;
+
+  if (std::holds_alternative<tkn::Mut>(begin->token_variant)) {
+    is_mutable = true;
+    ++begin;
+  }
+
+  auto identifier = parse_identifier(begin);
   if (!identifier.has_value()) {
     return std::unexpected(identifier.error());
   }
@@ -234,6 +249,9 @@ auto parse_variable_definition(ParseIter begin)
 
   auto result = alloc::make_unique_pmr<ast::VariableDefinitionNode>(
       std::move(identifier.value().first), begin->position);
+
+  result->is_global = is_global;
+  result->is_mutable = is_mutable;
 
   if (std::holds_alternative<tkn::Colon>(begin->token_variant)) {
     auto type = parse_type(begin + 1);
@@ -353,6 +371,15 @@ auto parse_block_expression(ParseIter begin)
       result.value = alloc::make_unique_pmr<ast::ExpressionNode>(
           ast::ExpressionNodeVariant(
               std::move(std::get<ast::LoopExpressionNode>(
+                  *result.statements.back().node))),
+          begin->position);
+
+      result.statements.pop_back();
+    } else if (std::holds_alternative<ast::BlockExpressionNode>(
+                   (*result.statements.back().node))) {
+      result.value = alloc::make_unique_pmr<ast::ExpressionNode>(
+          ast::ExpressionNodeVariant(
+              std::move(std::get<ast::BlockExpressionNode>(
                   *result.statements.back().node))),
           begin->position);
 
@@ -508,6 +535,14 @@ auto parse_statement(ParseIter begin) -> ParseResult<ast::StatementNode> {
         loop_expr.value().second);
   }
 
+  auto block_expr = parse_block_expression(begin);
+  if (block_expr.has_value()) {
+    return std::make_pair(
+        alloc::make_unique_pmr<ast::StatementNode>(
+            std::move(*block_expr.value().first), begin->position),
+        block_expr.value().second);
+  }
+
   auto var_def = parse_variable_definition(begin);
   if (var_def.has_value()) {
     return std::make_pair(
@@ -608,15 +643,16 @@ auto parse_assignment(ParseIter begin) -> ParseResult<ast::AssignmentNode> {
 
   auto identifier = parse_lvalue_expression(begin);
   if (identifier.has_value()) {
-    ++begin;
+    auto after_lvalue = identifier.value().second;
 
-    if (!std::holds_alternative<tkn::Assignment>(begin->token_variant)) {
-      return std::unexpected(UnexpectedToken{begin->position, tkn::Assignment{},
-                                             begin->token_variant});
+    if (!std::holds_alternative<tkn::Assignment>(after_lvalue->token_variant)) {
+      return std::unexpected(UnexpectedToken{after_lvalue->position,
+                                             tkn::Assignment{},
+                                             after_lvalue->token_variant});
     }
-    ++begin;
+    ++after_lvalue;
 
-    auto expr = parse_expression(begin);
+    auto expr = parse_expression(after_lvalue);
     if (expr.has_value()) {
       return std::make_pair(alloc::make_unique_pmr<ast::AssignmentNode>(
                                 std::move(identifier.value().first),
@@ -722,7 +758,7 @@ auto parse_cast(ParseIter begin) -> ParseResult<ast::CastNode> {
 
   ++begin;
 
-  auto type = parse_identifier(begin);
+  auto type = parse_type(begin);
   if (!type.has_value()) {
     return std::unexpected(
         UnexpectedToken{begin->position, tkn::As{}, begin->token_variant});
@@ -734,6 +770,21 @@ auto parse_cast(ParseIter begin) -> ParseResult<ast::CastNode> {
 }
 
 auto parse_unary(ParseIter begin) -> ParseResult<ast::UnaryNode> {
+
+  if (std::holds_alternative<tkn::Ampersand>(begin->token_variant) &&
+      std::holds_alternative<tkn::Mut>((begin + 1)->token_variant)) {
+    auto primary = parse_primary(begin + 2);
+    if (primary.has_value()) {
+      auto unary = alloc::make_unique_pmr<ast::UnaryNode>(
+          std::move(primary.value().first), begin->position);
+      unary->op.emplace(alloc::make_unique_pmr<
+                        type_tuple_to_variant_t<tkn::UnaryOperatorTuple>>(
+          tkn::Ampersand{}));
+      unary->is_mut_ref = true;
+      return std::make_pair(std::move(unary), primary.value().second);
+    }
+    return std::unexpected(TryButCant{begin->position, nterm::Unary{}});
+  }
 
   auto optional_variant =
       variant_cast<tkn::TokenTuple, tkn::UnaryOperatorTuple>(

@@ -21,8 +21,7 @@ function definition:
                               primary: 
                                 identifier: a
                             to type: 
-                              identifier: f64
-                          binary operation: *
+                              f64                          binary operation: *
                           cast: 
                             unary: 
                               primary: 
@@ -76,8 +75,7 @@ function definition:
                                                           primary: 
                                                             identifier: a
                                                         to type: 
-                                                          identifier: i64
-                                  expression: 
+                                                          i64                                  expression: 
                                     logical or: 
                                       logical and: 
                                         comparison: 
@@ -92,10 +90,8 @@ function definition:
                                                           primary: 
                                                             identifier: b
                                                         to type: 
-                                                          identifier: f64
-                            to type: 
-                              identifier: f32
-                        binary operation: +
+                                                          f64                            to type: 
+                              f32                        binary operation: +
                         multiplication: 
                           cast: 
                             unary: 
@@ -180,8 +176,7 @@ function definition:
                                                                                       primary: 
                                                                                         literal: 146.67
                                                         to type: 
-                                                          identifier: f32
-function definition: 
+                                                          f32function definition: 
   name: main
   argument list is empty
   return type is void
@@ -246,8 +241,7 @@ function definition:
                                                                                       primary: 
                                                                                         literal: 3
                                                         to type: 
-                                                          identifier: i32
-    statement: 
+                                                          i32    statement: 
       expression: 
         logical or: 
           logical and: 
@@ -279,4 +273,4 @@ function definition:
                                                             call function: strange_func
                                                             with arguments:
                                                         to type: 
-                                                          identifier: u64
+                                                          u64
