@@ -11,7 +11,7 @@
 
 namespace fs = std::filesystem;
 
-inline const std::string code_filename = "/code.txt";
+inline const std::string code_filename = "/code.rs";
 inline const std::string ast_filename = "/ast.txt";
 inline const std::string result_filename = "/result.txt";
 inline const std::string ir_filename = "/ir.ll";

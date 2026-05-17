@@ -4,6 +4,7 @@
 #include <ranges>
 
 #include <semantic_analysis/semantic_visitor.hpp>
+#include <stdexcept>
 
 SemanticVisitor::SemanticVisitor(TypeStore& type_store,
                                  GlobalSymbolTable& symbol_table)
@@ -19,6 +20,23 @@ void SemanticVisitor::visit(ast::Program& program) {
 
 void SemanticVisitor::visit(ast::VariableDefinitionNode& variable_definition) {
   variable_definition.table = symbol_table_;
+
+  if (symbol_table_->get_parent() != nullptr && variable_definition.is_global) {
+    throw std::runtime_error("Global variable definition not in global scope.");
+  }
+
+  if (symbol_table_->get_parent() == nullptr &&
+      !variable_definition.is_global) {
+    throw std::runtime_error("Local variable definition in global scope.");
+  }
+
+  if (variable_definition.is_global) {
+    if (!variable_definition.type.has_value() ||
+        !variable_definition.value.has_value()) {
+      throw std::runtime_error(
+          "Global variable definitions must exist type and initilize value");
+    }
+  }
 
   tp::TypeId declared_type = tp::no_type_id;
 

@@ -236,6 +236,10 @@ auto parse_variable_definition(ParseIter begin)
 
   bool is_mutable = false;
 
+  if (is_mutable && is_global) {
+    throw std::runtime_error("Static mutable variable are not supported");
+  }
+
   if (std::holds_alternative<tkn::Mut>(begin->token_variant)) {
     is_mutable = true;
     ++begin;

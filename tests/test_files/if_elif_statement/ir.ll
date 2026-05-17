@@ -1,5 +1,5 @@
-; ModuleID = 'tests/test_files/if_elif_statement/code.txt'
-source_filename = "tests/test_files/if_elif_statement/code.txt"
+; ModuleID = 'tests/test_files/if_elif_statement/code.rs'
+source_filename = "tests/test_files/if_elif_statement/code.rs"
 
 declare void @print_i8(i8)
 

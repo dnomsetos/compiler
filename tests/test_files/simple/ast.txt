@@ -1,41 +1,37 @@
 variable definition: 
   name: x
   type:     i64
+  value: 
+  expression: 
+    logical or: 
+      logical and: 
+        comparison: 
+          bitwise or: 
+            bitwise xor: 
+              bitwise and: 
+                shift: 
+                  addition: 
+                    multiplication: 
+                      cast: 
+                        unary: 
+                          primary: 
+                            literal: 1
+                    binary operation: +
+                    multiplication: 
+                      cast: 
+                        unary: 
+                          primary: 
+                            literal: 2
+                      binary operation: *
+                      cast: 
+                        unary: 
+                          primary: 
+                            literal: 3
 function definition: 
   name: main
   argument list is empty
   return type is void
   body: 
-    statement: 
-      expression: 
-        assignment: 
-          identifier: x
-          assigned value: 
-            expression: 
-              logical or: 
-                logical and: 
-                  comparison: 
-                    bitwise or: 
-                      bitwise xor: 
-                        bitwise and: 
-                          shift: 
-                            addition: 
-                              multiplication: 
-                                cast: 
-                                  unary: 
-                                    primary: 
-                                      literal: 1
-                              binary operation: +
-                              multiplication: 
-                                cast: 
-                                  unary: 
-                                    primary: 
-                                      literal: 2
-                                binary operation: *
-                                cast: 
-                                  unary: 
-                                    primary: 
-                                      literal: 3
     statement: 
       expression: 
         logical or: 
