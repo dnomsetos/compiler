@@ -5,20 +5,26 @@
 #include <scanner/token.hpp>
 
 inline const std::pair<const char*, tkn::token_variant_t> keyword_table[] = {
-    {"fn", tkn::Fn{}},     {"var", tkn::Var{}},   {"if", tkn::If{}},
-    {"else", tkn::Else{}}, {"true", tkn::True{}}, {"false", tkn::False{}},
+    {"fn", tkn::Fn{}},         {"let", tkn::Let{}},
+    {"if", tkn::If{}},         {"else", tkn::Else{}},
+    {"true", tkn::True{}},     {"false", tkn::False{}},
+    {"break", tkn::Break{}},   {"continue", tkn::Continue{}},
+    {"return", tkn::Return{}}, {"loop", tkn::Loop{}},
+    {"as", tkn::As{}},
 };
 
 inline const std::pair<const char*, tkn::token_variant_t>
     language_symbols_table[] = {
-        {"->", tkn::Arrow{}},      {"!=", tkn::NotEqual{}},
+        {"->", tkn::Arrow{}},      {">>", tkn::RightShift{}},
+        {"<<", tkn::LeftShift{}},  {"&&", tkn::LogicalAnd{}},
+        {"||", tkn::LogicalOr{}},  {"!=", tkn::NotEqual{}},
         {"==", tkn::Equal{}},      {">=", tkn::GreaterEqual{}},
         {"<=", tkn::LessEqual{}},  {">", tkn::Greater{}},
         {"<", tkn::Less{}},        {"+", tkn::Plus{}},
         {"-", tkn::Minus{}},       {"*", tkn::Multiply{}},
         {"/", tkn::Divide{}},      {"%", tkn::Mod{}},
-        {"&", tkn::And{}},         {"|", tkn::Or{}},
-        {"^", tkn::Xor{}},         {";", tkn::Semicolon{}},
+        {"&", tkn::BitwiseAnd{}},  {"|", tkn::BitwiseOr{}},
+        {"^", tkn::BitwiseXor{}},  {";", tkn::Semicolon{}},
         {":", tkn::Colon{}},       {"(", tkn::LeftParent{}},
         {")", tkn::RightParent{}}, {"{", tkn::LeftBrace{}},
         {"}", tkn::RightBrace{}},  {"=", tkn::Assignment{}},

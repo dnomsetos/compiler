@@ -1,10 +1,13 @@
+#include "scanner/token.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <iostream>
+#include <stdexcept>
+#include <string>
+#include <variant>
 
 #include <scanner/tokenize.hpp>
-#include <variant>
 
 bool identifier_filter(char c) {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
@@ -18,7 +21,6 @@ auto read_string(const std::string& code, std::size_t i, bool (*filter)(char))
     -> std::pair<std::string, std::size_t> {
 
   std::string name;
-
   while (i < code.size() && filter(code[i])) {
     if constexpr (std::is_same_v<Converter, StringLiteralConverter>) {
       if (code[i] == '\\') {
@@ -56,9 +58,9 @@ auto read_string(const std::string& code, std::size_t i, bool (*filter)(char))
 }
 
 auto read_number(const std::string& code, std::size_t i)
-    -> std::pair<std::uint64_t, std::size_t> {
+    -> std::pair<std::int64_t, std::size_t> {
 
-  std::uint64_t value = 0;
+  std::int64_t value = 0;
 
   while (i < code.size() && code[i] >= '0' && code[i] <= '9') {
     value *= 10;
@@ -82,8 +84,8 @@ void read_float_or_int_literal(const std::string& code, std::size_t& i,
         tkn::FloatLiteral{
             .value = value + value2 / std::pow(10, new_i2 - new_i - 1),
         },
-        tkn::Position{current_position.line, current_position.offset,
-                      new_i2 + 1 - i});
+        tkn::Position{
+            current_position.line, current_position.offset, new_i2 + 1 - i});
 
     current_position.offset += new_i2 - i;
     i = new_i2;
@@ -94,8 +96,8 @@ void read_float_or_int_literal(const std::string& code, std::size_t& i,
       tkn::IntLiteral{
           .value = value,
       },
-      tkn::Position{current_position.line, current_position.offset,
-                    new_i + 1 - i});
+      tkn::Position{
+          current_position.line, current_position.offset, new_i + 1 - i});
 
   current_position.offset += new_i - i;
   i = new_i;
@@ -116,26 +118,26 @@ void read_identifier_or_keyword(const std::string& code, std::size_t& i,
 
   if (it != std::end(keyword_table)) {
     if (std::holds_alternative<tkn::True>(it->second)) {
-      tokens.emplace_back(tkn::BoolLiteral{.value = true},
-                          tkn::Position{current_position.line,
-                                        current_position.offset,
-                                        new_i + 1 - i});
+      tokens.emplace_back(
+          tkn::BoolLiteral{.value = true},
+          tkn::Position{
+              current_position.line, current_position.offset, new_i + 1 - i});
       current_position.offset += new_i - i;
       i = new_i;
       return;
     } else if (std::holds_alternative<tkn::False>(it->second)) {
-      tokens.emplace_back(tkn::BoolLiteral{.value = false},
-                          tkn::Position{current_position.line,
-                                        current_position.offset,
-                                        new_i + 1 - i});
+      tokens.emplace_back(
+          tkn::BoolLiteral{.value = false},
+          tkn::Position{
+              current_position.line, current_position.offset, new_i + 1 - i});
       current_position.offset += new_i - i;
       i = new_i;
       return;
     }
 
-    tokens.emplace_back(it->second,
-                        tkn::Position{current_position.line,
-                                      current_position.offset, new_i + 1 - i});
+    tokens.emplace_back(
+        it->second, tkn::Position{current_position.line,
+                                  current_position.offset, new_i + 1 - i});
 
     current_position.offset += new_i - i;
     i = new_i;
@@ -145,8 +147,8 @@ void read_identifier_or_keyword(const std::string& code, std::size_t& i,
       tkn::Identifier{
           .name = name,
       },
-      tkn::Position{current_position.line, current_position.offset,
-                    new_i + 1 - i});
+      tkn::Position{
+          current_position.line, current_position.offset, new_i + 1 - i});
   current_position.offset += new_i - i;
   i = new_i;
 }
@@ -168,8 +170,8 @@ void read_string_literal(const std::string& code, std::size_t& i,
       tkn::StringLiteral{
           .value = name,
       },
-      tkn::Position{current_position.line, current_position.offset,
-                    new_i + 2 - i});
+      tkn::Position{
+          current_position.line, current_position.offset, new_i + 2 - i});
 
   current_position.offset += new_i + 1 - i;
   i = new_i + 1;
@@ -200,18 +202,58 @@ void read_language_symbol(const std::string& code, std::size_t& i,
   }
 
   std::size_t token_size = std::strlen(it->first);
-  tokens.emplace_back(it->second,
-                      tkn::Position{current_position.line,
-                                    current_position.offset, token_size});
+  tokens.emplace_back(
+      it->second, tkn::Position{current_position.line, current_position.offset,
+                                token_size});
   i += token_size - 1;
   current_position.offset += token_size - 1;
+}
+
+void read_char_literal_or_label(const std::string& code, std::size_t& i,
+                                tkn::Point& current_position,
+                                std::deque<tkn::TokenInfo>& tokens) {
+
+  if (i + 2 < code.size() && code[i + 2] == '\'') {
+    tokens.emplace_back(tkn::CharLiteral{.value = code[i + 1]},
+                        tkn::Position{current_position, 3});
+    i += 2;
+    current_position.offset += 2;
+  } else if (i + 3 < code.size() && code[i + 3] == '\'') {
+    auto it =
+        std::find_if(std::begin(escape_table), std::end(escape_table),
+                     [c = code[i + 2]](auto&& val) { return c == val.first; });
+
+    if (it == std::end(escape_table)) {
+      std::cerr << "Invalid escepe sequence at line " +
+                       std::to_string(current_position.line) + ", offset "
+                << std::to_string(current_position.offset) << std::endl;
+      throw std::runtime_error("Invalid escape sequence");
+    }
+
+    tokens.emplace_back(tkn::CharLiteral{.value = it->second},
+                        tkn::Position{current_position, 4});
+
+    i += 3;
+    current_position.offset += 3;
+  } else {
+    auto result = read_string<DummyConverter>(code, i + 1, identifier_filter);
+
+    tokens.emplace_back(
+        tkn::Label{
+            .name = result.first,
+        },
+        tkn::Position{current_position.line, current_position.offset,
+                      result.second + 1 - i});
+    current_position.offset += result.second - i;
+    i = result.second;
+  }
 }
 
 auto tokenize(const std::string& code) -> std::deque<tkn::TokenInfo> {
 
   std::deque<tkn::TokenInfo> tokens;
 
-  tkn::Point current_position = {.line = 1, .offset = 0};
+  tkn::Point current_position{.line = 1, .offset = 0};
 
   for (std::size_t i = 0; i < code.size(); ++i) {
     char c = code[i];
@@ -230,6 +272,8 @@ auto tokenize(const std::string& code) -> std::deque<tkn::TokenInfo> {
       read_identifier_or_keyword(code, i, current_position, tokens);
     } else if (c == '"') {
       read_string_literal(code, i, current_position, tokens);
+    } else if (c == '\'') {
+      read_char_literal_or_label(code, i, current_position, tokens);
     } else {
       read_language_symbol(code, i, current_position, tokens);
     }

@@ -1,0 +1,6 @@
+let x : i64;
+
+fn main() {
+    x = 1 + 2 * 3;
+    print_i64(x);
+}

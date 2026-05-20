@@ -1,0 +1,282 @@
+function definition: 
+  name: add
+  argument list: 
+    argument with name a with type i64
+    argument with name b with type f64
+  return type: f64
+  body: 
+    return value: 
+      expression: 
+        logical or: 
+          logical and: 
+            comparison: 
+              bitwise or: 
+                bitwise xor: 
+                  bitwise and: 
+                    shift: 
+                      addition: 
+                        multiplication: 
+                          cast: 
+                            unary: 
+                              primary: 
+                                identifier: a
+                            to type: 
+                              identifier: f64
+                          binary operation: *
+                          cast: 
+                            unary: 
+                              primary: 
+                                literal: 42.42
+                        binary operation: +
+                        multiplication: 
+                          cast: 
+                            unary: 
+                              primary: 
+                                identifier: b
+                          binary operation: /
+                          cast: 
+                            unary: 
+                              primary: 
+                                literal: 239
+function definition: 
+  name: compute
+  argument list: 
+    argument with name a with type i32
+    argument with name b with type f32
+  return type: f32
+  body: 
+    return value: 
+      expression: 
+        logical or: 
+          logical and: 
+            comparison: 
+              bitwise or: 
+                bitwise xor: 
+                  bitwise and: 
+                    shift: 
+                      addition: 
+                        multiplication: 
+                          cast: 
+                            unary: 
+                              primary: 
+                                call function: add
+                                with arguments:
+                                  expression: 
+                                    logical or: 
+                                      logical and: 
+                                        comparison: 
+                                          bitwise or: 
+                                            bitwise xor: 
+                                              bitwise and: 
+                                                shift: 
+                                                  addition: 
+                                                    multiplication: 
+                                                      cast: 
+                                                        unary: 
+                                                          primary: 
+                                                            identifier: a
+                                                        to type: 
+                                                          identifier: i64
+                                  expression: 
+                                    logical or: 
+                                      logical and: 
+                                        comparison: 
+                                          bitwise or: 
+                                            bitwise xor: 
+                                              bitwise and: 
+                                                shift: 
+                                                  addition: 
+                                                    multiplication: 
+                                                      cast: 
+                                                        unary: 
+                                                          primary: 
+                                                            identifier: b
+                                                        to type: 
+                                                          identifier: f64
+                            to type: 
+                              identifier: f32
+                        binary operation: +
+                        multiplication: 
+                          cast: 
+                            unary: 
+                              primary: 
+                                literal: 160
+function definition: 
+  name: strange_func
+  argument list is empty
+  return type: f32
+  body: 
+    return value: 
+      expression: 
+        logical or: 
+          logical and: 
+            comparison: 
+              bitwise or: 
+                bitwise xor: 
+                  bitwise and: 
+                    shift: 
+                      addition: 
+                        multiplication: 
+                          cast: 
+                            unary: 
+                              primary: 
+                                call function: compute
+                                with arguments:
+                                  expression: 
+                                    logical or: 
+                                      logical and: 
+                                        comparison: 
+                                          bitwise or: 
+                                            bitwise xor: 
+                                              bitwise and: 
+                                                shift: 
+                                                  addition: 
+                                                    multiplication: 
+                                                      cast: 
+                                                        unary: 
+                                                          primary: 
+                                                            literal: 42
+                                  expression: 
+                                    logical or: 
+                                      logical and: 
+                                        comparison: 
+                                          bitwise or: 
+                                            bitwise xor: 
+                                              bitwise and: 
+                                                shift: 
+                                                  addition: 
+                                                    multiplication: 
+                                                      cast: 
+                                                        unary: 
+                                                          primary: 
+                                                            call function: add
+                                                            with arguments:
+                                                              expression: 
+                                                                logical or: 
+                                                                  logical and: 
+                                                                    comparison: 
+                                                                      bitwise or: 
+                                                                        bitwise xor: 
+                                                                          bitwise and: 
+                                                                            shift: 
+                                                                              addition: 
+                                                                                multiplication: 
+                                                                                  cast: 
+                                                                                    unary: 
+                                                                                      primary: 
+                                                                                        literal: 239
+                                                              expression: 
+                                                                logical or: 
+                                                                  logical and: 
+                                                                    comparison: 
+                                                                      bitwise or: 
+                                                                        bitwise xor: 
+                                                                          bitwise and: 
+                                                                            shift: 
+                                                                              addition: 
+                                                                                multiplication: 
+                                                                                  cast: 
+                                                                                    unary: 
+                                                                                      primary: 
+                                                                                        literal: 146.67
+                                                        to type: 
+                                                          identifier: f32
+function definition: 
+  name: main
+  argument list is empty
+  return type is void
+  body: 
+    statement: 
+      expression: 
+        logical or: 
+          logical and: 
+            comparison: 
+              bitwise or: 
+                bitwise xor: 
+                  bitwise and: 
+                    shift: 
+                      addition: 
+                        multiplication: 
+                          cast: 
+                            unary: 
+                              primary: 
+                                call function: print_i32
+                                with arguments:
+                                  expression: 
+                                    logical or: 
+                                      logical and: 
+                                        comparison: 
+                                          bitwise or: 
+                                            bitwise xor: 
+                                              bitwise and: 
+                                                shift: 
+                                                  addition: 
+                                                    multiplication: 
+                                                      cast: 
+                                                        unary: 
+                                                          primary: 
+                                                            call function: add
+                                                            with arguments:
+                                                              expression: 
+                                                                logical or: 
+                                                                  logical and: 
+                                                                    comparison: 
+                                                                      bitwise or: 
+                                                                        bitwise xor: 
+                                                                          bitwise and: 
+                                                                            shift: 
+                                                                              addition: 
+                                                                                multiplication: 
+                                                                                  cast: 
+                                                                                    unary: 
+                                                                                      primary: 
+                                                                                        literal: 5
+                                                              expression: 
+                                                                logical or: 
+                                                                  logical and: 
+                                                                    comparison: 
+                                                                      bitwise or: 
+                                                                        bitwise xor: 
+                                                                          bitwise and: 
+                                                                            shift: 
+                                                                              addition: 
+                                                                                multiplication: 
+                                                                                  cast: 
+                                                                                    unary: 
+                                                                                      primary: 
+                                                                                        literal: 3
+                                                        to type: 
+                                                          identifier: i32
+    statement: 
+      expression: 
+        logical or: 
+          logical and: 
+            comparison: 
+              bitwise or: 
+                bitwise xor: 
+                  bitwise and: 
+                    shift: 
+                      addition: 
+                        multiplication: 
+                          cast: 
+                            unary: 
+                              primary: 
+                                call function: print_u64
+                                with arguments:
+                                  expression: 
+                                    logical or: 
+                                      logical and: 
+                                        comparison: 
+                                          bitwise or: 
+                                            bitwise xor: 
+                                              bitwise and: 
+                                                shift: 
+                                                  addition: 
+                                                    multiplication: 
+                                                      cast: 
+                                                        unary: 
+                                                          primary: 
+                                                            call function: strange_func
+                                                            with arguments:
+                                                        to type: 
+                                                          identifier: u64

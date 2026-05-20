@@ -41,8 +41,18 @@ target_compile_options(tests
         -Wall -Wextra -Wpedantic -fsanitize=address,undefined
 )
 
+message(STATUS "TEST_DATA_DIR: ${CMAKE_SOURCE_DIR}/tests/test_files/")
+
+
+target_compile_definitions(tests PRIVATE
+    PARSE_TEST_DATA_DIR="${CMAKE_SOURCE_DIR}/tests/test_files/"
+)
+
 include(GoogleTest)
-gtest_discover_tests(tests)
+gtest_discover_tests(
+    tests
+    NO_PRETTY_VALUES
+)
 
 add_custom_target(run_tests
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure

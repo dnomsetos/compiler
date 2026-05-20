@@ -1,0 +1,96 @@
+function definition: 
+  name: outer
+  argument list is empty
+  return type is void
+  body: 
+    statement: 
+      function definition: 
+        name: inner
+        argument list is empty
+        return type is void
+        body: 
+          statement: 
+            variable definition: 
+              name: x
+              value: 
+              expression: 
+                logical or: 
+                  logical and: 
+                    comparison: 
+                      bitwise or: 
+                        bitwise xor: 
+                          bitwise and: 
+                            shift: 
+                              addition: 
+                                multiplication: 
+                                  cast: 
+                                    unary: 
+                                      primary: 
+                                        literal: 42
+          statement: 
+            expression: 
+              logical or: 
+                logical and: 
+                  comparison: 
+                    bitwise or: 
+                      bitwise xor: 
+                        bitwise and: 
+                          shift: 
+                            addition: 
+                              multiplication: 
+                                cast: 
+                                  unary: 
+                                    primary: 
+                                      call function: print_i32
+                                      with arguments:
+                                        expression: 
+                                          logical or: 
+                                            logical and: 
+                                              comparison: 
+                                                bitwise or: 
+                                                  bitwise xor: 
+                                                    bitwise and: 
+                                                      shift: 
+                                                        addition: 
+                                                          multiplication: 
+                                                            cast: 
+                                                              unary: 
+                                                                primary: 
+                                                                  identifier: x
+    statement: 
+      expression: 
+        logical or: 
+          logical and: 
+            comparison: 
+              bitwise or: 
+                bitwise xor: 
+                  bitwise and: 
+                    shift: 
+                      addition: 
+                        multiplication: 
+                          cast: 
+                            unary: 
+                              primary: 
+                                call function: inner
+                                with arguments:
+function definition: 
+  name: main
+  argument list is empty
+  return type is void
+  body: 
+    statement: 
+      expression: 
+        logical or: 
+          logical and: 
+            comparison: 
+              bitwise or: 
+                bitwise xor: 
+                  bitwise and: 
+                    shift: 
+                      addition: 
+                        multiplication: 
+                          cast: 
+                            unary: 
+                              primary: 
+                                call function: outer
+                                with arguments:
