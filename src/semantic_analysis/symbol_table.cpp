@@ -102,6 +102,12 @@ auto SymbolTable::get_function_symbol_in_position(
   return result;
 }
 
+auto SymbolTable::get_definition_scope(const std::string& name) const
+    -> const SymbolTable* {
+  auto* Symbol = get_variable_symbol(name);
+  return Symbol->scope;
+}
+
 bool SymbolTable::check_variable_availability(const std::string& name) const {
   return variable_symbols_.contains(name) ||
          (parent_ == nullptr ? false
@@ -119,8 +125,8 @@ const SymbolTable* SymbolTable::get_parent() const { return parent_; }
 SymbolTable::ScopeVariant& SymbolTable::get_scope() { return scope_; }
 
 SymbolTable* SymbolTable::create_simple_child() {
-  children_.push_back(alloc::make_unique_pmr<SymbolTable>(
-      children_.size(), this, SimpleScope{}));
+  children_.push_back(alloc::make_unique_pmr<SymbolTable>(children_.size(),
+                                                          this, SimpleScope{}));
   return &*children_.back();
 }
 

@@ -63,7 +63,8 @@ StatementNode::StatementNode(StatementNodeVariant&& node,
 
 VariableDefinitionNode::VariableDefinitionNode(
     alloc::pmr_unique_ptr<IdentifierNode>&& name, const tkn::Position& position)
-    : ASTNode(position, SymbolTableInfo{}), name{std::move(name)} {}
+    : ASTNode(position, SymbolTableInfo{}), name{std::move(name)},
+      is_global(false) {}
 
 BreakStatementNode::BreakStatementNode(const tkn::Position& position)
     : ASTNode(position, SymbolTableInfo{}) {}

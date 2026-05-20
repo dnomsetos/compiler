@@ -17,6 +17,7 @@ class TypeStore;
 struct Symbol {
   tkn::Position position;
   tp::TypeId type;
+  // declaration scope
   SymbolTable* scope;
   ast::FunctionDefinitionNode* definition;
   bool is_defined = false;
@@ -67,6 +68,9 @@ public:
   auto get_function_symbol_in_position(const std::string& name,
                                        const tkn::Position& position) const
       -> const Symbol*;
+
+  auto get_definition_scope(const std::string& name) const
+      -> const SymbolTable*;
 
   bool check_variable_availability(const std::string& name) const;
 

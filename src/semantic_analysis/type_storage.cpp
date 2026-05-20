@@ -1,4 +1,5 @@
 #include <iostream>
+#include <stacktrace>
 
 #include <semantic_analysis/type_storage.hpp>
 
@@ -12,14 +13,22 @@
 
 tp::TypeId TypeStore::get_function(tp::TypeId return_type,
                                    std::vector<tp::TypeId>&& args) {
-  tp::FunctionType function_type{std::move(args), return_type};
+  tp::FunctionType function_type(std::move(args), return_type);
+
+  // std::cout << "function type args size: " << function_type.args.size()
+  //           << std::endl;
+  //
+  // std::cout << std::stacktrace::current() << std::endl;
+  //
+  // std::cout << "hash: " << FunctionTypeHash{}(function_type) << std::endl;
+
   if (functions_types_.contains(function_type)) {
     return functions_types_.at(function_type);
   }
 
   tp::TypeId type_id = types_.size() + basic_types_.size();
 
-  types_.emplace_back(std::move(function_type));
+  types_.emplace_back(function_type);
 
   functions_types_[function_type] = type_id;
 
@@ -188,6 +197,20 @@ bool TypeStore::is_integer_type(tp::TypeId type_id) {
 
         return is_in_type_tuple_v<T, tp::IntegerTypeTuple> ||
                std::is_same_v<T, tp::IntLiteral>;
+      },
+      get_type(type_id).type);
+}
+
+bool TypeStore::is_signed_type(tp::TypeId type_id) {
+  if (type_id == tp::no_type_id) {
+    return false;
+  }
+
+  return std::visit(
+      [](auto&& val) -> bool {
+        using T = std::decay_t<decltype(val)>;
+
+        return is_in_type_tuple_v<T, tp::SignedIntegerTypeTuple>;
       },
       get_type(type_id).type);
 }

@@ -10,29 +10,21 @@ public:
   void visit(ast::Program& program);
 
   void visit(ast::VariableDefinitionNode& variable_definition);
-
   void visit(ast::FunctionDefinitionNode& function_definition);
 
   void visit(ast::StatementNode& statement);
-
   void visit(ast::ReturnStatementNode& return_stmt);
-
   void visit(ast::BreakStatementNode& break_stmt);
-
   void visit(ast::ContinueStatementNode& continue_stmt);
 
   void visit(ast::ExpressionNode& expression,
              tp::TypeId expected_type = tp::no_type_id);
-
   void visit(ast::BlockExpressionNode& expression,
              tp::TypeId expected_type = tp::no_type_id);
-
   void visit(ast::IfExpressionNode& expression,
              tp::TypeId expected_type = tp::no_type_id);
-
   void visit(ast::LoopExpressionNode& loop,
              tp::TypeId expected_type = tp::no_type_id);
-
   void visit(ast::AssignmentNode& assignment,
              tp::TypeId expected_type = tp::no_type_id);
 

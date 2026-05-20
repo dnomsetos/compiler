@@ -20,7 +20,7 @@ std::ostream& operator<<(std::ostream& out, const UndefinedType&) {
   return out;
 }
 
-FunctionType::FunctionType(std::vector<TypeId> args, TypeId return_type)
+FunctionType::FunctionType(std::vector<TypeId>&& args, TypeId return_type)
     : args(std::move(args)), return_type(return_type) {}
 
 std::ostream& operator<<(std::ostream& out, const FunctionType&) {
@@ -56,6 +56,8 @@ Type::Type(LiteralVariant&& type)
     : type{std::visit([](auto&& val) -> TypeVariant { return val; }, type)} {}
 
 Type::Type(UndefinedType&& type) : type{std::move(type)} {}
+
+Type::Type(const FunctionType& type) : type{type} {}
 
 bool is_basic_type(TypeId type_id) { return type_id < basic_type_count; }
 

@@ -48,6 +48,8 @@ public:
 
   bool is_integer_type(tp::TypeId type_id);
 
+  bool is_signed_type(tp::TypeId type_id);
+
   bool is_float_type(tp::TypeId type_id);
 
   void handle_ast_types();

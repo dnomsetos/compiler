@@ -1,6 +1,8 @@
+#include <filesystem>
 #include <fstream>
 #include <ranges>
 
+#include "test_utilities.hpp"
 #include <gtest/gtest.h>
 #include <parser/parse.hpp>
 #include <scanner/tokenize.hpp>
@@ -18,27 +20,9 @@
       "function_in_function", "mini_program", "strange_situation",             \
       "declarations_without_definitions"
 
-const std::string code_filename = "/code.txt";
-const std::string ast_filename = "/ast.txt";
-const std::string interpret_result_filename = "/interpret_result.txt";
-
 class ParseTests : public testing::TestWithParam<std::string> {};
 
 class InterpretTests : public testing::TestWithParam<std::string> {};
-
-auto prepare_test_data(const std::string& dir_name)
-    -> std::optional<ParseResult<ast::Program>> {
-  std::ifstream code(PARSE_TEST_DATA_DIR + dir_name + code_filename);
-  if (!code.is_open()) {
-    return std::nullopt;
-  }
-
-  std::stringstream buffer;
-  buffer << code.rdbuf();
-
-  auto tokens = tokenize(buffer.str());
-  return parse_program(tokens.begin(), tokens.end());
-}
 
 TEST_P(ParseTests, ) {
   std::string dir_name = GetParam();
@@ -54,8 +38,8 @@ TEST_P(ParseTests, ) {
   PrintVisitor visitor(buffer);
   visitor(*ast.value().first);
 
-  std::ifstream result(
-      PARSE_TEST_DATA_DIR + dir_name + ast_filename, std::ios::binary);
+  std::ifstream result(TEST_DATA_DIR + dir_name + ast_filename,
+                       std::ios::binary);
   ASSERT_TRUE(result.is_open());
 
   std::stringstream result_buffer;
@@ -88,8 +72,7 @@ TEST_P(InterpretTests, ) {
 
   std::string output = testing::internal::GetCapturedStdout();
 
-  std::ifstream result(PARSE_TEST_DATA_DIR + dir_name +
-                       interpret_result_filename);
+  std::ifstream result(TEST_DATA_DIR + dir_name + result_filename);
   ASSERT_TRUE(result.is_open());
 
   std::stringstream buffer;
@@ -113,7 +96,7 @@ auto test_name_generator(
 }
 
 INSTANTIATE_TEST_SUITE_P(, ParseTests, testing::Values(DIR_NAMES_LIST),
-                         test_name_generator);
+                         test_name_generator<ParseTests>);
 
 INSTANTIATE_TEST_SUITE_P(, InterpretTests, testing::Values(DIR_NAMES_LIST),
-                         test_name_generator);
+                         test_name_generator<InterpretTests>);
