@@ -270,6 +270,8 @@ int main(int argc, char** argv) {
     emit_object(code, input_file, obj_path);
   } else if (mode == custom_ir_mode) {
     build_custom_ir(code, input_file);
+  } else if (mode == borrow_checker) {
+    run_borrow_checker(code, input_file);
   } else {
     std::cerr << "Unknown mode\n";
     return 1;
