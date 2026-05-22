@@ -861,58 +861,34 @@ auto parse_lvalue_dereference(ParseIter begin)
   }
   ++begin;
 
-  auto identifier = parse_identifier(begin);
+  auto primary = parse_primary(begin);
 
-  if (!identifier.has_value()) {
-    return std::unexpected(TryButCant{begin->position, nterm::Dereference{}});
+  if (!primary.has_value()) {
+    return std::unexpected(TryButCant{begin->position, nterm::Primary{}});
   }
 
-  if (std::holds_alternative<tkn::LeftParent>(begin->token_variant)) {
-    ast::FunctionCallNode function_call(std::move(identifier.value().first),
-                                        begin->position);
-
-    begin = identifier.value().second;
-
-    auto first_argument = parse_expression(begin);
-
-    if (!first_argument.has_value()) {
-      if (std::holds_alternative<tkn::RightParent>(begin->token_variant)) {
-        return std::make_pair(
-            alloc::make_unique_pmr<ast::LvalueDereferenceNode>(
-                std::move(function_call), begin->position),
-            begin + 1);
-      }
-
-      return std::unexpected(TryButCant{begin->position, nterm::Dereference{}});
-    }
-
-    begin = first_argument.value().second;
-
-    for (;;) {
-      if (!std::holds_alternative<tkn::Comma>(begin->token_variant)) {
-        break;
-      }
-      ++begin;
-
-      auto arg = parse_expression(begin);
-      if (!arg.has_value()) {
-        return std::unexpected(
-            TryButCant{begin->position, nterm::Dereference{}});
-      }
-
-      function_call.arguments.emplace_back(std::move(*arg.value().first));
-      begin = arg.value().second;
-    }
+  if (std::holds_alternative<ast::FunctionCallNode>(
+          *primary.value().first->primary)) {
+    ast::FunctionCallNode& function_call =
+        std::get<ast::FunctionCallNode>(*primary.value().first->primary);
 
     return std::make_pair(alloc::make_unique_pmr<ast::LvalueDereferenceNode>(
                               std::move(function_call), begin->position),
-                          begin);
+                          primary.value().second);
   }
 
-  return std::make_pair(
-      alloc::make_unique_pmr<ast::LvalueDereferenceNode>(
-          std::move(*identifier.value().first), begin->position),
-      identifier.value().second);
+  if (std::holds_alternative<ast::IdentifierNode>(
+          *primary.value().first->primary)) {
+    ast::IdentifierNode& identifier =
+        std::get<ast::IdentifierNode>(*primary.value().first->primary);
+
+    return std::make_pair(alloc::make_unique_pmr<ast::LvalueDereferenceNode>(
+                              std::move(identifier), begin->position),
+                          primary.value().second);
+  }
+
+  return std::unexpected(
+      UnexpectedToken{begin->position, tkn::Asterisk{}, begin->token_variant});
 }
 
 auto parse_primary(ParseIter begin) -> ParseResult<ast::PrimaryNode> {

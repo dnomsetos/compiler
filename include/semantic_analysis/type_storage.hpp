@@ -7,28 +7,7 @@
 #include <parser/ast.hpp>
 #include <semantic_analysis/symbol_table.hpp>
 #include <semantic_analysis/types.hpp>
-
-struct FunctionTypeHash {
-  std::size_t operator()(const tp::FunctionType& f) const {
-    std::size_t seed = std::hash<std::size_t>{}(f.return_type);
-
-    for (const auto& x : f.args) {
-      seed ^= std::hash<std::size_t>{}(x) + 0x9e3779b97f4a7c15ULL +
-              (seed << 6) + (seed >> 2);
-    }
-
-    return seed;
-  }
-};
-
-struct ReferenceTypeHash {
-  std::size_t operator()(const tp::ReferenceType& f) const {
-    std::size_t h1 = std::hash<std::size_t>{}(f.base_type);
-    std::size_t h2 = std::hash<bool>{}(f.is_mutable);
-
-    return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
-  }
-};
+#include <utility/hash_utils.hpp>
 
 class TypeStore {
 public:
@@ -70,6 +49,8 @@ public:
   bool is_float_type(tp::TypeId type_id);
 
   bool is_reference_type(tp::TypeId type_id);
+
+  bool is_mutable_reference_type(tp::TypeId type_id);
 
   void handle_ast_types();
 

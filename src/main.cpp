@@ -3,6 +3,8 @@
 #include <iomanip>
 #include <iostream>
 
+#include <borrow_check/borrow_checker.hpp>
+#include <borrow_check/control_flow_graph.hpp>
 #include <ir_builder/builder.hpp>
 #include <parser/parse.hpp>
 #include <scanner/tokenize.hpp>
@@ -17,6 +19,8 @@ const std::string help_mode = "--help";
 const std::string print_ast_mode = "--print_ast";
 const std::string semantic_mode = "--semantic";
 const std::string ir_mode = "--build_ir";
+const std::string custom_ir_mode = "--build_custom_ir";
+const std::string borrow_checker = "--borrow_check";
 const std::string emit_object_mode = "--emit_object";
 
 const char* skip_empty_arg = "--skip_empty";
@@ -90,6 +94,67 @@ void build_ir(const std::string& code, const std::string& module_name,
   ir_visitor.print_module(out);
 }
 
+void build_custom_ir(const std::string& code, const std::string& module_name,
+                     std::ostream& out = std::cout) {
+  if (out.rdbuf() == std::cout.rdbuf()) {
+    out << "Building custom IR\n";
+  }
+
+  auto tokens = tokenize(code);
+  auto ast = parse_program(tokens.begin(), tokens.end());
+
+  if (!ast.has_value()) {
+    std::cerr << "Failed to parse\n";
+    return;
+  }
+
+  TypeStore type_store;
+  GlobalSymbolTable global_symbol_table{type_store};
+
+  SemanticVisitor semantic_visitor(type_store, global_symbol_table);
+  semantic_visitor.visit(*ast.value().first);
+
+  TypeChecker type_checker(type_store);
+  type_checker.visit(*ast.value().first);
+
+  ir::ControlFlowGraph ir_visitor(type_store);
+  ir_visitor.visit(*ast.value().first);
+
+  ir_visitor.print();
+}
+
+void run_borrow_checker(const std::string& code, const std::string& module_name,
+                        std::ostream& out = std::cout) {
+  if (out.rdbuf() == std::cout.rdbuf()) {
+    out << "Building custom IR\n";
+  }
+
+  auto tokens = tokenize(code);
+  auto ast = parse_program(tokens.begin(), tokens.end());
+
+  if (!ast.has_value()) {
+    std::cerr << "Failed to parse\n";
+    return;
+  }
+
+  TypeStore type_store;
+  GlobalSymbolTable global_symbol_table{type_store};
+
+  SemanticVisitor semantic_visitor(type_store, global_symbol_table);
+  semantic_visitor.visit(*ast.value().first);
+
+  TypeChecker type_checker(type_store);
+  type_checker.visit(*ast.value().first);
+
+  ir::ControlFlowGraph ir_visitor(type_store);
+  ir_visitor.visit(*ast.value().first);
+
+  ir_visitor.print();
+
+  BorrowChecker borrow_checker_visitor;
+  borrow_checker_visitor.check(ir_visitor.get_main_block(), {});
+}
+
 void emit_object(const std::string& code, const std::string& module_name,
                  const std::string& output_path) {
   std::cout << "Emitting object file\n";
@@ -134,6 +199,8 @@ void print_help() {
   std::cout << "  compiler " << semantic_mode << " <file>\n";
   std::cout << "  compiler " << ir_mode << " <file> [" << out_file_arg
             << " <outeput.ll>]\n";
+  std::cout << "  compiler " << custom_ir_mode << std::endl;
+  std::cout << "  compiler " << borrow_checker;
   std::cout << "  compiler " << emit_object_mode << " <file> [" << out_file_arg
             << " <output.o>]\n";
 }
@@ -201,6 +268,8 @@ int main(int argc, char** argv) {
     const std::string obj_path =
         out_file.empty() ? default_object_path(input_file) : out_file;
     emit_object(code, input_file, obj_path);
+  } else if (mode == custom_ir_mode) {
+    build_custom_ir(code, input_file);
   } else {
     std::cerr << "Unknown mode\n";
     return 1;

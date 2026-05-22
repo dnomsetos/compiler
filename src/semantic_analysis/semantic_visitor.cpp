@@ -114,6 +114,11 @@ void SemanticVisitor::visit(ast::FunctionDefinitionNode& function_definition) {
   if (function_definition.return_type != nullptr) {
     return_type =
         type_store_.get_type_id_by_ast_type(*function_definition.return_type);
+
+    if (type_store_.is_reference_type(return_type)) {
+      throw std::runtime_error(
+          "Function return type cannot be a reference type.");
+    }
   } else {
     return_type = type_store_.get_basic_type(tp::Void{});
   }
@@ -904,6 +909,12 @@ void SemanticVisitor::visit(ast::UnaryNode& unary_node,
   }
 
   if (std::holds_alternative<tkn::Ampersand>(*unary_node.op.value())) {
+    if (!std::holds_alternative<ast::IdentifierNode>(
+            *unary_node.primary->primary)) {
+
+      throw std::runtime_error("Attempt to take a reference to rvalue object");
+    }
+
     visit(*unary_node.primary);
 
     tp::TypeId base_type = unary_node.primary->type_id;
@@ -927,6 +938,11 @@ void SemanticVisitor::visit(ast::UnaryNode& unary_node,
   }
 
   if (std::holds_alternative<tkn::Asterisk>(*unary_node.op.value())) {
+    if (!std::holds_alternative<ast::IdentifierNode>(
+            *unary_node.primary->primary)) {
+
+      throw std::runtime_error("Attempt to dereference rvalue");
+    }
     visit(*unary_node.primary);
 
     tp::TypeId ref_type_id = unary_node.primary->type_id;
@@ -1045,6 +1061,7 @@ void SemanticVisitor::visit(ast::LvalueDereferenceNode& dereference_node,
 void SemanticVisitor::visit(ast::FunctionCallNode& function_call,
                             tp::TypeId expected_type) {
   function_call.table = symbol_table_;
+  function_call.name->table = symbol_table_;
 
   auto& function_name = function_call.name->identifier->name;
 

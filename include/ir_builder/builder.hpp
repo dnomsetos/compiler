@@ -5,6 +5,7 @@
 #include <parser/ast.hpp>
 #include <semantic_analysis/symbol_table.hpp>
 #include <semantic_analysis/type_storage.hpp>
+#include <utility/hash_utils.hpp>
 
 #include <llvm-22/llvm/IR/BasicBlock.h>
 #include <llvm-22/llvm/IR/Function.h>
@@ -21,16 +22,6 @@
 #include <llvm-22/llvm/Target/TargetMachine.h>
 #include <llvm-22/llvm/Target/TargetOptions.h>
 #include <llvm-22/llvm/TargetParser/Triple.h>
-
-struct PairHash {
-  template <class T1, class T2>
-  size_t operator()(const std::pair<T1, T2>& p) const {
-    size_t h1 = std::hash<T1>{}(p.first);
-    size_t h2 = std::hash<T2>{}(p.second);
-
-    return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
-  }
-};
 
 class BuildVisitor {
 public:

@@ -1,7 +1,8 @@
-tests/test_files/helpers.o
 build/
 .cache/
 Testing/
 .clang-format
 .clangd
 include/utility/result*
+play.rs
+helpers.o

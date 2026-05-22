@@ -18,6 +18,10 @@ template <typename T>
 using pmr_unique_ptr =
     std::unique_ptr<T, alloc::MonotonicBufferResourceDeleter<T>>;
 
+template <typename T> using pmr_shared_ptr = std::shared_ptr<T>;
+
+template <typename T> using pmr_weak_ptr = std::weak_ptr<T>;
+
 template <typename T, typename... Args>
 auto make_unique_pmr(Args&&... args) -> pmr_unique_ptr<T> {
   void* mem = mr.allocate(sizeof(T), alignof(T));
@@ -25,7 +29,8 @@ auto make_unique_pmr(Args&&... args) -> pmr_unique_ptr<T> {
   return pmr_unique_ptr<T>(obj);
 }
 
-template <typename T, typename... Args> auto make_shared_pmr(Args&&... args) {
+template <typename T, typename... Args>
+auto make_shared_pmr(Args&&... args) -> std::shared_ptr<T> {
   return std::allocate_shared<T>(std::pmr::polymorphic_allocator<T>{&mr},
                                  std::forward<Args>(args)...);
 }

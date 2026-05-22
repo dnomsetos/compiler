@@ -308,6 +308,23 @@ bool TypeStore::is_reference_type(tp::TypeId type_id) {
       get_type(type_id).type);
 }
 
+bool TypeStore::is_mutable_reference_type(tp::TypeId type_id) {
+  if (type_id == tp::no_type_id) {
+    return false;
+  }
+
+  return std::visit(
+      [](auto&& val) -> bool {
+        using T = std::decay_t<decltype(val)>;
+
+        if constexpr (std::is_same_v<T, tp::ReferenceType>) {
+          return val.is_mutable;
+        }
+        return false;
+      },
+      get_type(type_id).type);
+}
+
 void TypeStore::handle_ast_types() {
   for (auto* node : ast_vars_) {
     tp::TypeId root = resolve(node->type_id);
