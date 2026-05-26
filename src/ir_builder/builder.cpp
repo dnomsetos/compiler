@@ -1,4 +1,3 @@
-#include "scanner/token.hpp"
 #include <iostream>
 #include <ranges>
 #include <stdexcept>

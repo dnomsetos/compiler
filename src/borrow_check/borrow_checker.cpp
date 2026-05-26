@@ -1,219 +1,112 @@
-#include "borrow_check/ir_structures.hpp"
-#include "utility/type_tuple.hpp"
+#include <ranges>
+
 #include <borrow_check/borrow_checker.hpp>
-#include <stdexcept>
+#include <borrow_check/places_state.hpp>
 
-void BorrowChecker::check(ir::BasicBlock* block, CheckerState parent_state) {
-  if (!states_.contains(block)) {
-    states_.emplace(block, CheckerState{});
+void BorrowChecker::State::apply(const bc_ir::Instruction& inst) {
+  Applier applier{*this};
+
+  std::visit(applier, inst.inst);
+}
+
+void BorrowChecker::State::meet(const BorrowChecker::State& other) {
+
+  for (auto& key : other.place_status | std::views::keys) {
+    if (!place_status.contains(key)) {
+      place_status.emplace(key, Status::Undefined);
+    }
   }
 
-  CheckerState& prev_state = states_.at(block);
-
-  CheckerState& state = parent_state;
-
-  for (auto& inst : block->instructions) {
-    std::visit(
-        overloaded{
-            [&](ir::AccessKindVariant& inst) {
-              std::visit(
-                  overloaded{
-                      [&](ir::BorrowShared& inst) {
-                        Status& resource_status =
-                            state.place_status.at(inst.resource);
-
-                        if (resource_status == Status::Dead) {
-                          throw std::runtime_error(
-                              "Attempt to borrow dead resource at ");
-
-                        } else if (resource_status == Status::MutBorrowed) {
-                          throw std::runtime_error(
-                              "Attempt to borrow resource that is "
-                              "already mutably borrowed at ");
-                        } else if (resource_status == Status::SharedBorrowed) {
-                          state.shared_borrows[inst.resource].insert(&inst);
-                        } else if (resource_status == Status::Live) {
-                          resource_status = Status::SharedBorrowed;
-                          state.mut_borrow[inst.resource] = nullptr;
-                          state.shared_borrows[inst.resource].insert(&inst);
-                        }
-                      },
-
-                      [&](ir::BorrowMut& inst) {
-                        Status& resource_status =
-                            state.place_status.at(inst.resource);
-
-                        if (resource_status == Status::Dead) {
-                          throw std::runtime_error(
-                              "Attempt to borrow dead resource at ");
-
-                        } else if (resource_status == Status::SharedBorrowed) {
-                          throw std::runtime_error(
-                              "Attempt to borrow resource that is "
-                              "already shared borrowed at ");
-                        } else if (resource_status == Status::MutBorrowed) {
-                          throw std::runtime_error(
-                              "Attempt to borrow resource that is "
-                              "already mutably borrowed at ");
-                        } else if (resource_status == Status::Live) {
-                          resource_status = Status::MutBorrowed;
-                          state.mut_borrow[inst.resource] = &inst;
-                          state.shared_borrows[inst.resource].clear();
-                        }
-                      },
-
-                      [&](ir::Alloca& inst) {
-                        if (state.place_status.contains(inst.variable)) {
-                          throw std::runtime_error(
-                              "Attempt to declare variable that is "
-                              "already defined at ");
-                        }
-
-                        state.place_status.emplace(inst.variable, Status::Live);
-                      },
-
-                      [&](ir::Read& inst) {
-                        Status& variable_status =
-                            state.place_status.at(inst.target->variable);
-
-                        if (variable_status == Status::Dead) {
-                          throw std::runtime_error(
-                              "Attempt to read dead variable at ");
-
-                        } else if (variable_status == Status::SharedBorrowed) {
-                          state.shared_borrows[inst.target->variable].clear();
-                        } else if (variable_status == Status::MutBorrowed) {
-                          state.mut_borrow[inst.target->variable] = nullptr;
-                          variable_status = Status::Live;
-                        } else if (variable_status == Status::Live) {
-                        }
-                      },
-
-                  },
-                  inst);
-            },
-
-            [&](ir::Read& inst) {
-              Status& variable_status =
-                  state.place_status.at(inst.target->variable);
-
-              if (variable_status == Status::Dead) {
-                throw std::runtime_error("Attempt to read dead variable at ");
-              } else if (variable_status == Status::SharedBorrowed) {
-                variable_status = Status::Live;
-              } else if (variable_status == Status::MutBorrowed) {
-                state.mut_borrow[inst.target->variable] = nullptr;
-                variable_status = Status::Live;
-              } else if (variable_status == Status::Live) {
-              }
-            },
-
-            [&](ir::Write& inst) {
-              Status& variable_status =
-                  state.place_status.at(inst.target->variable);
-
-              if (variable_status == Status::Dead) {
-                throw std::runtime_error(
-                    "Attempt to write to dead variable at ");
-              } else if (variable_status == Status::SharedBorrowed) {
-                state.shared_borrows[inst.target->variable].clear();
-                variable_status = Status::Live;
-              } else if (variable_status == Status::MutBorrowed) {
-                state.mut_borrow[inst.target->variable] = nullptr;
-                variable_status = Status::Live;
-              } else if (variable_status == Status::Live) {
-              }
-            },
-
-            [&](ir::ReadImmutRef& inst) {
-              Status& variable_status =
-                  state.place_status.at(inst.target->resource);
-
-              if (variable_status == Status::Dead) {
-                throw std::runtime_error("Attempt to read dead variable at ");
-              } else if (variable_status == Status::SharedBorrowed) {
-                if (!state.shared_borrows[inst.target->resource].contains(
-                        inst.target)) {
-                  throw std::runtime_error(
-                      "Attempt to read variable with use immutable reference, "
-                      "but this reference is dead at ");
-                }
-              } else if (variable_status == Status::MutBorrowed) {
-                throw std::runtime_error(
-                    "Attempt to read variable with use immutable reference "
-                    "that is mutably borrowed at ");
-              } else if (variable_status == Status::Live) {
-                throw std::runtime_error("Attempt to read variable "
-                                         "that is not borrowed at ");
-              }
-            },
-
-            [&](ir::ReadMutRef& inst) {
-              Status& variable_status =
-                  state.place_status.at(inst.target->resource);
-
-              if (variable_status == Status::Dead) {
-                throw std::runtime_error("Attempt to read dead variable at ");
-              } else if (variable_status == Status::SharedBorrowed) {
-                throw std::runtime_error(
-                    "Attempt to read variable with use mutable reference, "
-                    "but this reference is shared borrowed at ");
-              } else if (variable_status == Status::MutBorrowed) {
-                if (state.mut_borrow[inst.target->resource] != inst.target) {
-                  throw std::runtime_error(
-                      "Attempt to read variable with use mutable reference, "
-                      "but this reference is dead at ");
-                }
-              } else if (variable_status == Status::Live) {
-                throw std::runtime_error("Attempt to read variable "
-                                         "that is not borrowed at ");
-              }
-            },
-
-            [&](ir::WriteRef& inst) {
-              Status& variable_status =
-                  state.place_status.at(inst.target->resource);
-
-              if (variable_status == Status::Dead) {
-                throw std::runtime_error(
-                    "Attempt to write to dead variable at ");
-              } else if (variable_status == Status::SharedBorrowed) {
-                throw std::runtime_error(
-                    "Attempt to write to variable with use mutable reference, "
-                    "but this reference is shared borrowed at ");
-              } else if (variable_status == Status::MutBorrowed) {
-                if (state.mut_borrow[inst.target->resource] != inst.target) {
-                  throw std::runtime_error("Attempt to write to variable with "
-                                           "use mutable reference, "
-                                           "but this reference is dead at ");
-                }
-              } else if (variable_status == Status::Live) {
-                throw std::runtime_error("Attempt to write to variable "
-                                         "that is not borrowed at ");
-              }
-            },
-
-            [&](ir::Drop& inst) {
-              state.place_status[inst.target->variable] = Status::Dead;
-              state.shared_borrows[inst.target->variable].clear();
-              state.mut_borrow[inst.target->variable] = nullptr;
-            },
-
-            [&](ir::FunctionCallInst&) {}},
-        inst.inst);
+  for (auto& [key, value] : place_status) {
+    if (!other.place_status.contains(key)) {
+      value = ::meet(value, Status::Undefined);
+      continue;
+    }
   }
 
-  if (state != prev_state) {
-    states_[block] = state;
-    std::visit(overloaded{[&](ir::UnconditionalBranchInst& inst) {
-                            check(inst.target.get(), state);
-                          },
-                          [&](ir::SwitchInst& inst) {
-                            for (auto& target : inst.cases) {
-                              check(target.get(), state);
-                            }
-                          },
-                          [&](ir::ReturnInst&) {}},
-               block->terminator.get()->terminator);
+  restore_invariants();
+}
+
+void BorrowChecker::State::join(const BorrowChecker::State& other) {
+
+  for (auto& key : other.place_status | std::views::keys) {
+    if (!place_status.contains(key)) {
+      place_status.emplace(key, Status::Undefined);
+    }
+  }
+
+  for (auto& [key, value] : place_status) {
+    if (!other.place_status.contains(key)) {
+      value = ::join(value, Status::Undefined);
+      continue;
+    }
+  }
+
+  restore_invariants();
+}
+
+void BorrowChecker::State::restore_invariants() {
+
+  for (auto& [key, value] : place_status) {
+    if (value == Status::Dead || value == Status::Live ||
+        value == Status::Undefined) {
+
+      mut_borrow[key] = nullptr;
+      shared_borrows[key].clear();
+
+    } else if (value == Status::MutBorrowed) {
+      shared_borrows[key].clear();
+
+    } else if (value == Status::SharedBorrowed) {
+      mut_borrow[key] = nullptr;
+    }
+  }
+}
+
+void BorrowChecker::check(const bc_ir::Function& function) {
+  in_.clear();
+  out_.clear();
+
+  for (auto* block : function.blocks) {
+    in_.try_emplace(block);
+    out_.try_emplace(block);
+  }
+
+  std::unordered_set<bc_ir::BasicBlock*> worklist{function.entry.get()};
+
+  while (!worklist.empty()) {
+    bc_ir::BasicBlock* block = *worklist.begin();
+    worklist.erase(block);
+
+    State in_state{block->incoming_edges.empty()
+                       ? State{}
+                       : out_.at(block->incoming_edges.front().lock().get())};
+
+    for (auto& pred : block->incoming_edges | std::views::drop(1)) {
+      bc_ir::BasicBlock* pred_block = pred.lock().get();
+
+      in_state.meet(out_.at(pred_block));
+    }
+
+    for (auto& inst : block->instructions) {
+      in_state.apply(inst);
+    }
+
+    if (out_.at(block) != in_state) {
+      out_.at(block) = in_state;
+
+      std::visit(overloaded{[&](bc_ir::UnconditionalBranchInst& inst) {
+                              worklist.emplace(inst.target.get());
+                            },
+
+                            [&](bc_ir::SwitchInst& inst) {
+                              for (auto& case_block : inst.cases) {
+                                worklist.emplace(case_block.get());
+                              }
+                            },
+
+                            [&](bc_ir::ReturnInst&) {}},
+                 block->terminator.get()->terminator);
+    }
   }
 }

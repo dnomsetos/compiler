@@ -117,7 +117,7 @@ void build_custom_ir(const std::string& code, const std::string& module_name,
   TypeChecker type_checker(type_store);
   type_checker.visit(*ast.value().first);
 
-  ir::ControlFlowGraph ir_visitor(type_store);
+  bc_ir::ControlFlowGraph ir_visitor(type_store);
   ir_visitor.visit(*ast.value().first);
 
   ir_visitor.print();
@@ -146,13 +146,16 @@ void run_borrow_checker(const std::string& code, const std::string& module_name,
   TypeChecker type_checker(type_store);
   type_checker.visit(*ast.value().first);
 
-  ir::ControlFlowGraph ir_visitor(type_store);
+  bc_ir::ControlFlowGraph ir_visitor(type_store);
   ir_visitor.visit(*ast.value().first);
 
   ir_visitor.print();
 
   BorrowChecker borrow_checker_visitor;
-  borrow_checker_visitor.check(ir_visitor.get_main_block(), {});
+
+  for (auto& func : ir_visitor.get_functions()) {
+    borrow_checker_visitor.check(func);
+  }
 }
 
 void emit_object(const std::string& code, const std::string& module_name,

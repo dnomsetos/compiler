@@ -1,27 +1,10 @@
-#include "semantic_analysis/types.hpp"
 #include <iostream>
-#include <stacktrace>
 
 #include <semantic_analysis/type_storage.hpp>
-
-// tp::TypeId TypeStore::new_var(tp::TypeId parent) {
-//   tp::TypeId type_id = types_.size();
-//
-//   types_.emplace_back(tp::VariableType{.parent = parent});
-//
-//   return type_id;
-// }
 
 tp::TypeId TypeStore::get_function(tp::TypeId return_type,
                                    std::vector<tp::TypeId>&& args) {
   tp::FunctionType function_type(std::move(args), return_type);
-
-  // std::cout << "function type args size: " << function_type.args.size()
-  //           << std::endl;
-  //
-  // std::cout << std::stacktrace::current() << std::endl;
-  //
-  // std::cout << "hash: " << FunctionTypeHash{}(function_type) << std::endl;
 
   if (functions_types_.contains(function_type)) {
     return functions_types_.at(function_type);
@@ -210,9 +193,6 @@ bool TypeStore::unify(tp::TypeId type1, tp::TypeId type2) {
               return unify(type1.base_type, type2.base_type);
             }
 
-            // std::cerr << type1 << type2 << std::endl;
-            // std::cerr << std::stacktrace::current() << std::endl;
-
             throw std::logic_error("Unreachable");
           },
           get_mutable_type(root1).type, get_mutable_type(root2).type);
@@ -328,8 +308,6 @@ bool TypeStore::is_mutable_reference_type(tp::TypeId type_id) {
 void TypeStore::handle_ast_types() {
   for (auto* node : ast_vars_) {
     tp::TypeId root = resolve(node->type_id);
-
-    // std::cout << "handle: " << *node << std::endl;
 
     SymbolTable* current_scope = node->table;
 

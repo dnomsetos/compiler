@@ -1,29 +1,35 @@
 #pragma once
 
 #include <deque>
+#include <memory>
 #include <vector>
 
 #include <semantic_analysis/symbol_table.hpp>
-#include <type_traits>
 #include <utility/allocator.hpp>
 #include <utility/type_tuple.hpp>
 
-#define ENABLE_DEBUG true
+#define ENABLE_DEBUG
 
-namespace ir {
+namespace bc_ir {
+
+#ifdef ENABLE_DEBUG
+using debug_string = std::string;
+#else
+using debug_string = Dummy;
+#endif
 
 struct Dummy {
   template <typename T> consteval Dummy(T) {}
 };
 
-using debug_string = std::conditional_t<ENABLE_DEBUG, std::string, Dummy>;
-
 struct Alloca {
+  tkn::Position position;
   const Symbol* variable;
   [[no_unique_address]] debug_string name;
 };
 
 struct BorrowShared {
+  tkn::Position position;
   const Symbol* reference;
   const Symbol* resource;
   [[no_unique_address]] debug_string name;
@@ -31,6 +37,7 @@ struct BorrowShared {
 };
 
 struct BorrowMut {
+  tkn::Position position;
   const Symbol* reference;
   const Symbol* resource;
   [[no_unique_address]] debug_string name;
@@ -41,26 +48,32 @@ using AccessKindTypeTuple = TypeTuple<Alloca, BorrowShared, BorrowMut>;
 using AccessKindVariant = type_tuple_to_variant_t<AccessKindTypeTuple>;
 
 struct Read {
+  tkn::Position position;
   Alloca* target;
 };
 
 struct Write {
+  tkn::Position position;
   Alloca* target;
 };
 
 struct ReadImmutRef {
+  tkn::Position position;
   BorrowShared* target;
 };
 
 struct ReadMutRef {
+  tkn::Position position;
   BorrowMut* target;
 };
 
 struct WriteRef {
+  tkn::Position position;
   BorrowMut* target;
 };
 
 struct Drop {
+  tkn::Position position;
   Alloca* target;
 };
 
@@ -79,6 +92,7 @@ struct ArgBinding {
 };
 
 struct FunctionCallInst {
+  tkn::Position position;
   const Symbol* symbol;
   std::vector<ArgBinding> arg_bindings;
   [[no_unique_address]] debug_string name;
@@ -94,7 +108,7 @@ struct UnconditionalBranchInst {
 };
 
 struct SwitchInst {
-  std::deque<alloc::pmr_shared_ptr<BasicBlock>> cases;
+  std::pmr::vector<alloc::pmr_shared_ptr<BasicBlock>> cases{&alloc::mr};
 };
 
 struct ReturnInst {};
@@ -130,7 +144,8 @@ struct Instruction {
   InstructionVariant inst;
 };
 
-struct BasicBlock {
+struct BasicBlock : std::enable_shared_from_this<BasicBlock> {
+  std::vector<std::weak_ptr<BasicBlock>> incoming_edges;
   alloc::pmr_unique_ptr<Terminator> terminator{nullptr};
   std::deque<Instruction> instructions;
   [[no_unique_address]] debug_string name;
@@ -138,9 +153,10 @@ struct BasicBlock {
 
 struct Function {
   const Symbol* symbol;
-  alloc::pmr_unique_ptr<BasicBlock> entry;
+  std::pmr::vector<BasicBlock*> blocks{&alloc::mr};
+  alloc::pmr_shared_ptr<BasicBlock> entry;
   std::deque<FunctionArgPlaceholder> arg_placeholders;
   [[no_unique_address]] debug_string name;
 };
 
-}; // namespace ir
+}; // namespace bc_ir

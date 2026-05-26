@@ -10,11 +10,6 @@ std::ostream& operator<<(std::ostream& out, const FloatLiteral&) {
   return out << "Float literal";
 }
 
-// std::ostream& operator<<(std::ostream& out, const VariableType&) {
-//   out << "VariableType" << std::endl;
-//   return out;
-// }
-
 std::ostream& operator<<(std::ostream& out, const UndefinedType&) {
   out << "UndefinedType" << std::endl;
   return out;

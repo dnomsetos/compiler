@@ -1,6 +1,5 @@
 #pragma once
 
-#include "parser/ast.hpp"
 #include <semantic_analysis/symbol_table.hpp>
 #include <semantic_analysis/type_storage.hpp>
 

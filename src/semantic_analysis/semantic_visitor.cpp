@@ -1,10 +1,7 @@
-#include "parser/ast.hpp"
-#include "semantic_analysis/symbol_table.hpp"
 #include <iostream>
 #include <ranges>
 
 #include <semantic_analysis/semantic_visitor.hpp>
-#include <stdexcept>
 
 SemanticVisitor::SemanticVisitor(TypeStore& type_store,
                                  GlobalSymbolTable& symbol_table)
@@ -156,8 +153,6 @@ void SemanticVisitor::visit(ast::FunctionDefinitionNode& function_definition) {
 
     args.push_back(arg_type_id);
   }
-
-  // std::cout << "args size: " << args.size() << std::endl;
 
   tp::TypeId function_type =
       type_store_.get_function(return_type, std::move(args));
@@ -920,10 +915,6 @@ void SemanticVisitor::visit(ast::UnaryNode& unary_node,
     tp::TypeId base_type = unary_node.primary->type_id;
     bool is_mut = unary_node.is_mut_ref;
     unary_node.type_id = type_store_.get_reference_type(base_type, is_mut);
-
-    // std::cerr << unary_node << ' ' << expected_type << ' ' <<
-    // unary_node.type_id
-    // << std::endl;
 
     if (expected_type != tp::no_type_id &&
         !type_store_.unify(expected_type, unary_node.type_id)) {

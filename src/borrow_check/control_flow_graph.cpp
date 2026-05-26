@@ -1,16 +1,11 @@
-#include "borrow_check/ir_structures.hpp"
-#include "parser/ast.hpp"
-#include "scanner/token.hpp"
-#include "utility/allocator.hpp"
 #include <iostream>
 #include <ranges>
 #include <stdexcept>
 #include <unordered_set>
 
 #include <borrow_check/control_flow_graph.hpp>
-#include <variant>
 
-namespace ir {
+namespace bc_ir {
 
 ControlFlowGraph::ControlFlowGraph(TypeStore& type_store)
     : type_store_(type_store) {}
@@ -45,14 +40,15 @@ void ControlFlowGraph::visit(
           function_definition.name->identifier->name);
 
   Function function{.symbol = function_symbol,
-                    .entry = alloc::make_unique_pmr<BasicBlock>(),
+                    .entry = alloc::make_shared_pmr<BasicBlock>(),
                     .name = function_definition.name->identifier->name};
+
+  function.blocks.push_back(function.entry.get());
 
   function.entry->name = "entry";
   current_block_ = function.entry.get();
-  if (function_definition.name->identifier->name == "main") {
-    main_block_ = function.entry.get();
-  }
+
+  functions_.push_back(std::move(function));
 
   for (auto&& [i, value] :
        std::views::enumerate(function_definition.argument_list)) {
@@ -80,8 +76,8 @@ void ControlFlowGraph::visit(
       const Symbol* phantom_ptr =
           &function.arg_placeholders.back().phantom_symbol;
 
-      current_block_->instructions.emplace_back(
-          Alloca{.variable = phantom_ptr, .name = placeholder_name});
+      current_block_->instructions.emplace_back(Alloca{
+          .position = arg, .variable = phantom_ptr, .name = placeholder_name});
 
       scopes_[arg.table].push_back(
           &std::get<Alloca>(std::get<AccessKindVariant>(
@@ -94,20 +90,22 @@ void ControlFlowGraph::visit(
 
       if (type_store_.is_mutable_reference_type(symbol->type)) {
         current_block_->instructions.emplace_back(
-            BorrowMut{.reference = symbol,
+            BorrowMut{.position = arg,
+                      .reference = symbol,
                       .resource = phantom_ptr,
                       .name = arg_name,
                       .resource_name = placeholder_name});
       } else {
         current_block_->instructions.emplace_back(
-            BorrowShared{.reference = symbol,
+            BorrowShared{.position = arg,
+                         .reference = symbol,
                          .resource = phantom_ptr,
                          .name = arg_name,
                          .resource_name = placeholder_name});
       }
     } else {
       current_block_->instructions.emplace_back(
-          Alloca{.variable = symbol, .name = arg_name});
+          Alloca{.position = arg, .variable = symbol, .name = arg_name});
 
       scopes_[arg.table].push_back(
           &std::get<Alloca>(std::get<AccessKindVariant>(
@@ -122,8 +120,6 @@ void ControlFlowGraph::visit(
   visit(*function_definition.body);
 
   current_block_->terminator = alloc::make_unique_pmr<Terminator>(ReturnInst{});
-
-  functions_.push_back(std::move(function));
 
   current_block_ = nullptr;
 }
@@ -143,13 +139,16 @@ void ControlFlowGraph::visit(
   if (type_store_.is_reference_type(symbol->type)) {
 
     if (type_store_.is_mutable_reference_type(symbol->type)) {
-      current_block_->instructions.emplace_back(BorrowMut{.reference = symbol,
-                                                          .resource = nullptr,
-                                                          .name = name,
-                                                          .resource_name = ""});
+      current_block_->instructions.emplace_back(
+          BorrowMut{.position = variable_definition,
+                    .reference = symbol,
+                    .resource = nullptr,
+                    .name = name,
+                    .resource_name = ""});
     } else {
       current_block_->instructions.emplace_back(
-          BorrowShared{.reference = symbol,
+          BorrowShared{.position = variable_definition,
+                       .reference = symbol,
                        .resource = nullptr,
                        .name = name,
                        .resource_name = ""});
@@ -221,8 +220,8 @@ void ControlFlowGraph::visit(
         },
         std::get<AccessKindVariant>(borrow_inst.inst));
   } else {
-    current_block_->instructions.emplace_back(
-        Alloca{.variable = symbol, .name = name});
+    current_block_->instructions.emplace_back(Alloca{
+        .position = variable_definition, .variable = symbol, .name = name});
 
     scopes_[variable_definition.table].push_back(&std::get<Alloca>(
         std::get<AccessKindVariant>(current_block_->instructions.back().inst)));
@@ -235,7 +234,8 @@ void ControlFlowGraph::visit(
       visit(*variable_definition.value.value());
 
       current_block_->instructions.emplace_back(
-          Write{.target = &std::get<Alloca>(
+          Write{.position = *variable_definition.name,
+                .target = &std::get<Alloca>(
                     *variables_.at({name, variable_definition.name->table}))});
     }
   }
@@ -265,11 +265,15 @@ void ControlFlowGraph::visit(const ast::BreakStatementNode& break_stmt) {
   }
 
   for (auto* alloca : scopes_[break_stmt.table]) {
-    current_block_->instructions.push_back(Drop{.target = alloca});
+    current_block_->instructions.push_back(
+        Drop{.position = break_stmt, .target = alloca});
   }
 
+  auto target = loop.finish.lock();
+
+  target->incoming_edges.push_back(current_block_->shared_from_this());
   current_block_->terminator = alloc::make_unique_pmr<Terminator>(
-      UnconditionalBranchInst{.target = loop.finish.lock()});
+      UnconditionalBranchInst{.target = target});
 
   current_block_ = nullptr;
 }
@@ -280,11 +284,15 @@ void ControlFlowGraph::visit(const ast::ContinueStatementNode& continue_stmt) {
       continue_stmt.label.has_value() ? continue_stmt.label.value().name : "");
 
   for (auto* alloca : scopes_[continue_stmt.table]) {
-    current_block_->instructions.push_back(Drop{.target = alloca});
+    current_block_->instructions.push_back(
+        Drop{.position = continue_stmt, .target = alloca});
   }
 
+  auto target = loop.body.lock();
+
+  target->incoming_edges.push_back(current_block_->shared_from_this());
   current_block_->terminator = alloc::make_unique_pmr<Terminator>(
-      UnconditionalBranchInst{.target = loop.body.lock()});
+      UnconditionalBranchInst{.target = target});
 
   current_block_ = nullptr;
 }
@@ -330,13 +338,16 @@ void ControlFlowGraph::visit(const ast::BlockExpressionNode& expression) {
   }
 
   for (auto* alloca : scopes_[scope]) {
-    current_block_->instructions.push_back(Drop{.target = alloca});
+    current_block_->instructions.push_back(
+        Drop{.position = expression, .target = alloca});
   }
 }
 
 void ControlFlowGraph::visit(const ast::IfExpressionNode& expression) {
 
   auto merge_block = alloc::make_shared_pmr<BasicBlock>();
+  functions_.back().blocks.push_back(merge_block.get());
+
   merge_block->name = "if.merge";
 
   auto build_branch =
@@ -349,6 +360,12 @@ void ControlFlowGraph::visit(const ast::IfExpressionNode& expression) {
     body_block->name = suffix + ".body";
     next_block->name = suffix + ".next";
 
+    functions_.back().blocks.push_back(body_block.get());
+    functions_.back().blocks.push_back(next_block.get());
+
+    body_block->incoming_edges.push_back(current_block_->shared_from_this());
+    next_block->incoming_edges.push_back(current_block_->shared_from_this());
+
     SwitchInst sw;
     sw.cases.push_back(body_block);
     sw.cases.push_back(next_block);
@@ -359,6 +376,7 @@ void ControlFlowGraph::visit(const ast::IfExpressionNode& expression) {
     visit(body);
 
     if (current_block_ != nullptr) {
+      merge_block->incoming_edges.push_back(current_block_->shared_from_this());
       current_block_->terminator = alloc::make_unique_pmr<Terminator>(
           UnconditionalBranchInst{.target = merge_block});
     }
@@ -379,10 +397,12 @@ void ControlFlowGraph::visit(const ast::IfExpressionNode& expression) {
   if (expression.else_body.has_value()) {
     visit(*expression.else_body.value());
     if (current_block_ != nullptr) {
+      merge_block->incoming_edges.push_back(current_block_->shared_from_this());
       current_block_->terminator = alloc::make_unique_pmr<Terminator>(
           UnconditionalBranchInst{.target = merge_block});
     }
   } else {
+    merge_block->incoming_edges.push_back(current_block_->shared_from_this());
     current_block_->terminator = alloc::make_unique_pmr<Terminator>(
         UnconditionalBranchInst{.target = merge_block});
   }
@@ -405,6 +425,9 @@ void ControlFlowGraph::visit(const ast::LoopExpressionNode& loop) {
   auto body_block = alloc::make_shared_pmr<BasicBlock>();
   auto finish_block = alloc::make_shared_pmr<BasicBlock>();
 
+  functions_.back().blocks.push_back(body_block.get());
+  functions_.back().blocks.push_back(finish_block.get());
+
   body_block->name = loop_context.label.has_value()
                          ? loop_context.label.value() + ".body"
                          : "loop.body";
@@ -418,6 +441,7 @@ void ControlFlowGraph::visit(const ast::LoopExpressionNode& loop) {
   body_block->terminator = alloc::make_unique_pmr<Terminator>(
       UnconditionalBranchInst{.target = body_block});
 
+  body_block->incoming_edges.push_back(current_block_->shared_from_this());
   current_block_->terminator = alloc::make_unique_pmr<Terminator>(
       UnconditionalBranchInst{.target = body_block});
 
@@ -436,10 +460,12 @@ void ControlFlowGraph::visit(const ast::LoopExpressionNode& loop) {
   }
 
   for (auto* alloca : scopes_[scope]) {
-    current_block_->instructions.push_back(Drop{.target = alloca});
+    current_block_->instructions.push_back(
+        Drop{.position = loop, .target = alloca});
   }
 
   if (current_block_ != nullptr) {
+    body_block->incoming_edges.push_back(current_block_->shared_from_this());
     current_block_->terminator = alloc::make_unique_pmr<Terminator>(
         UnconditionalBranchInst{.target = body_block});
   }
@@ -468,8 +494,8 @@ void ControlFlowGraph::visit(const ast::AssignmentNode& assignment) {
         throw std::runtime_error("Variable is not a value");
       }
 
-      current_block_->instructions.emplace_back(
-          Write{.target = &std::get<Alloca>(var)});
+      current_block_->instructions.emplace_back(Write{
+          .position = *assignment.left, .target = &std::get<Alloca>(var)});
 
       return;
     }
@@ -498,8 +524,8 @@ void ControlFlowGraph::visit(const ast::AssignmentNode& assignment) {
     } else if (std::holds_alternative<Alloca>(var)) {
       std::logic_error("Incorrect variable type");
     } else {
-      current_block_->instructions.emplace_back(
-          WriteRef{.target = &std::get<BorrowMut>(var)});
+      current_block_->instructions.emplace_back(WriteRef{
+          .position = *assignment.left, .target = &std::get<BorrowMut>(var)});
     }
 
     return;
@@ -538,6 +564,7 @@ void ControlFlowGraph::visit(const ast::AssignmentNode& assignment) {
         throw std::runtime_error("Cannot assign to immutable reference");
       } else {
         current_block_->instructions.emplace_back(BorrowShared{
+            .position = assignment,
             .reference = std::get<BorrowShared>(lvar).reference,
             .resource = std::get<BorrowShared>(var).resource,
             .name = std::get<BorrowShared>(lvar).name,
@@ -549,7 +576,8 @@ void ControlFlowGraph::visit(const ast::AssignmentNode& assignment) {
             "Cannot borrow mutable place from immutable reference");
       } else {
         current_block_->instructions.emplace_back(
-            BorrowMut{.reference = std::get<BorrowMut>(lvar).reference,
+            BorrowMut{.position = assignment,
+                      .reference = std::get<BorrowMut>(lvar).reference,
                       .resource = std::get<BorrowMut>(var).resource,
                       .name = std::get<BorrowMut>(lvar).name,
                       .resource_name = std::get<BorrowMut>(var).resource_name});
@@ -577,13 +605,15 @@ void ControlFlowGraph::visit(const ast::AssignmentNode& assignment) {
 
   if (right_unary_node->is_mut_ref) {
     current_block_->instructions.emplace_back(
-        BorrowMut{.reference = std::get<BorrowMut>(lvar).reference,
+        BorrowMut{.position = lident,
+                  .reference = std::get<BorrowMut>(lvar).reference,
                   .resource = std::get<Alloca>(var).variable,
                   .name = std::get<BorrowMut>(lvar).name,
                   .resource_name = std::get<Alloca>(var).name});
   } else {
     current_block_->instructions.emplace_back(
-        BorrowShared{.reference = std::get<BorrowShared>(lvar).reference,
+        BorrowShared{.position = lident,
+                     .reference = std::get<BorrowShared>(lvar).reference,
                      .resource = std::get<Alloca>(var).variable,
                      .name = std::get<BorrowShared>(lvar).name,
                      .resource_name = std::get<Alloca>(var).name});
@@ -640,11 +670,13 @@ void ControlFlowGraph::visit(const ast::UnaryNode& unary_node) {
     if (std::holds_alternative<BorrowShared>(var)) {
       auto& ref = std::get<BorrowShared>(var);
 
-      current_block_->instructions.emplace_back(ReadImmutRef{.target = &ref});
+      current_block_->instructions.emplace_back(
+          ReadImmutRef{.position = unary_node, .target = &ref});
     } else if (std::holds_alternative<BorrowMut>(var)) {
       auto& ref = std::get<BorrowMut>(var);
 
-      current_block_->instructions.emplace_back(ReadMutRef{.target = &ref});
+      current_block_->instructions.emplace_back(
+          ReadMutRef{.position = unary_node, .target = &ref});
     } else {
       throw std::runtime_error("Try to dereference value");
     }
@@ -733,7 +765,8 @@ void ControlFlowGraph::visit(const ast::FunctionCallNode& function_call) {
   }
 
   current_block_->instructions.emplace_back(
-      FunctionCallInst{.symbol = symbol,
+      FunctionCallInst{.position = function_call,
+                       .symbol = symbol,
                        .arg_bindings = std::move(bindings),
                        .name = function_call.name->identifier->name});
 }
@@ -881,4 +914,8 @@ void ControlFlowGraph::print() const {
   }
 }
 
-} // namespace ir
+auto ControlFlowGraph::get_functions() const -> const std::deque<Function>& {
+  return functions_;
+}
+
+} // namespace bc_ir

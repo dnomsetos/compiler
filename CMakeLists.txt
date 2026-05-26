@@ -20,6 +20,8 @@ llvm_map_components_to_libnames(LLVM_LIBS
     native
 )
 
+message(STATUS "llvm libs: " ${LLVM_LIBS})
+
 execute_process(
     COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libstdc++exp.a
     OUTPUT_VARIABLE STDCXX_EXP_PATH

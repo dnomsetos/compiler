@@ -1,6 +1,6 @@
 #include <borrow_check/ir_structures.hpp>
 
-namespace ir {
+namespace bc_ir {
 
 Terminator::Terminator(UnconditionalBranchInst&& inst)
     : terminator{std::move(inst)} {}
@@ -17,4 +17,4 @@ Instruction::Instruction(WriteRef&& inst) : inst{std::move(inst)} {}
 Instruction::Instruction(FunctionCallInst&& inst) : inst{std::move(inst)} {}
 Instruction::Instruction(Drop&& inst) : inst{std::move(inst)} {}
 
-} // namespace ir
+} // namespace bc_ir

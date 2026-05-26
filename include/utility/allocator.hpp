@@ -34,4 +34,5 @@ auto make_shared_pmr(Args&&... args) -> std::shared_ptr<T> {
   return std::allocate_shared<T>(std::pmr::polymorphic_allocator<T>{&mr},
                                  std::forward<Args>(args)...);
 }
+
 } // namespace alloc

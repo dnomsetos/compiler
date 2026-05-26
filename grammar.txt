@@ -1,25 +1,46 @@
 program ::= definition*
+
 definition ::= function_definition | variable_definition
-function_definition ::= "fn" identifier "(" ")" block_expression
-variable_definition ::= "var" identifier ":" identifier ";"
-arguments_list ::= (identifier : identifier ("," identifier : identifier)*) | eps
+
+function_definition ::= "fn" identifier "(" arguments_list ")" block_expression
+arguments_list ::= (identifier : type ("," identifier : type)*) | eps
+
+variable_definition ::= ("let" | "static") "mut"? identifier (":" type)? ("=" expression)? ";"
+
 interrupt_statement ::= ("break" | "continue") label? expression? ";"
 return_statement ::= "return" expression? ";"
-statement ::= expression ";" | variable_definition | interrupt_statement | return_statement 
+
+statement ::= expression ";" | variable_definition | interrupt_statement | return_statement |
+                               if_expression | loop_expression | block_expression
+
 expression ::= assignment | or | if_expression | block_expression | loop_expression
-loop_expression ::= label? ":" "loop" block_expression
+
+loop_expression ::= (label ":")? "loop" block_expression
+
 block_expression ::= "{" statement* expression? "}"
+
 if_expression ::= "if" expression block_expression ("else" "if" expression block_expression)* ("else" block_expression)?
+
 assignment ::= identifier "=" expression
-logical_or ::= logical_and ("||" logical_and)*
-logical_and ::= comparison ("&&" comparison)*
-comparison ::= bitwise_or (("<" | ">" | "<=" | ">=") bitwise_or)*
-bitwise_or ::= bitwise_xor ("|" bitwise_xor)*
-bitwise_xor ::= bitwise_and ("^" bitwise_and)*
-bitwise_and ::= shift ("&" shift)*
-shift ::= addition (("<<" | ">>") addition)*
-addition ::= multiplication (("+" | "-") multiplication)*
-multiplication ::= unary (("*" | "/" | "%") unary)*
-unary ::= ("-" | "!")? primary
-primary ::= identifier ("("")")? | literal | "(" expression ")"
-literal ::= int_literal | float_literal | string_literal
+
+logical_or     ::= logical_and ("||" logical_and)*
+logical_and    ::= comparison ("&&" comparison)*
+comparison     ::= bitwise_or (("<" | ">" | "<=" | ">=") bitwise_or)*
+bitwise_or     ::= bitwise_xor ("|" bitwise_xor)*
+bitwise_xor    ::= bitwise_and ("^" bitwise_and)*
+bitwise_and    ::= shift ("&" shift)*
+shift          ::= addition (("<<" | ">>") addition)*
+addition       ::= multiplication (("+" | "-") multiplication)*
+multiplication ::= cast (("*" | "/" | "%") cast)*
+
+cast ::= unary ("as" type)?
+
+unary ::= ("-" | "!" | "*")? primary
+
+primary ::= identifier | literal | function_call | "(" expression ")"
+
+literal ::= int_literal | float_literal | bool_literal | char_literal
+
+function_call ::= identifier "(" (expression ("," expression)*)? ")"
+
+type ::= "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" | "f32" | "f64" | "bool" | "char" | "&" "mut"? type;

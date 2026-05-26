@@ -302,7 +302,6 @@ struct StatementNode : ASTNode {
 
 struct FunctionDefinitionNode : ASTNode {
   alloc::pmr_unique_ptr<IdentifierNode> name;
-  // first is name, second is type
   std::pmr::vector<std::pair<IdentifierNode, TypeNode>> argument_list;
   alloc::pmr_unique_ptr<TypeNode> return_type;
   alloc::pmr_unique_ptr<BlockExpressionNode> body;

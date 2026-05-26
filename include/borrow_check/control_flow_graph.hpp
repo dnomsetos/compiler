@@ -8,7 +8,7 @@
 #include <utility/allocator.hpp>
 #include <utility/hash_utils.hpp>
 
-namespace ir {
+namespace bc_ir {
 
 class ControlFlowGraph {
 public:
@@ -44,7 +44,7 @@ public:
 
   void print() const;
 
-  BasicBlock* get_main_block() const { return main_block_; }
+  auto get_functions() const -> const std::deque<Function>&;
 
 private:
   struct LoopContext {
@@ -65,7 +65,6 @@ private:
   std::deque<Function> functions_;
   std::deque<LoopContext> loop_stack_;
   BasicBlock* current_block_;
-  BasicBlock* main_block_;
 };
 
-} // namespace ir
+} // namespace bc_ir

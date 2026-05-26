@@ -2,7 +2,6 @@
 #include <string>
 
 #include <semantic_analysis/symbol_table.hpp>
-#include <type_traits>
 
 SymbolTable::SymbolTable(SymbolTable* parent, ScopeVariant&& scope)
     : parent_{parent}, scope_{scope} {}

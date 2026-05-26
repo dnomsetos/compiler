@@ -273,6 +273,10 @@ struct Position {
   Position(Point start, std::size_t size) : start(start), size(size) {}
 
   friend bool operator==(const Position& left, const Position& right) = default;
+
+  std::string to_string() const {
+    return std::to_string(start.line) + ":" + std::to_string(start.offset);
+  }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Position& position) {
