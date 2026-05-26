@@ -1,4 +1,6 @@
 build/
+build-valgrind/
+build-debug/
 .cache/
 Testing/
 .clang-format

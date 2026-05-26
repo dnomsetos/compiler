@@ -1,13 +1,12 @@
 include(FetchContent)
 
 FetchContent_Declare(
-  googletest
-  GIT_REPOSITORY https://github.com/google/googletest.git
-  GIT_TAG v1.15.0
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG v1.15.0
 )
 
 set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
-
 FetchContent_MakeAvailable(googletest)
 
 file(GLOB_RECURSE TEST_SRC
@@ -33,14 +32,17 @@ target_link_libraries(tests
         ${LLVM_LIBS}
 )
 
-target_link_options(tests
-    PRIVATE
-        -fsanitize=address,undefined
-)
-
 target_compile_options(tests
     PRIVATE
-        -Wall -Wextra -Wpedantic -fsanitize=address,undefined
+        -Wall
+        -Wextra
+        -Wpedantic
+        $<$<BOOL:${ENABLE_SANITIZERS}>:-fsanitize=address,undefined>
+)
+
+target_link_options(tests
+    PRIVATE
+        $<$<BOOL:${ENABLE_SANITIZERS}>:-fsanitize=address,undefined>
 )
 
 message(STATUS "TEST_DATA_DIR: ${CMAKE_SOURCE_DIR}/tests/test_files/")
@@ -73,3 +75,21 @@ add_custom_target(run_tests
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMENT "Running all unit tests"
 )
+
+find_program(VALGRIND_EXECUTABLE valgrind)
+
+if(VALGRIND_EXECUTABLE)
+    add_custom_target(valgrind_cachegrind
+        COMMAND ${VALGRIND_EXECUTABLE} --tool=cachegrind --cache-sim=yes --branch-sim=yes $<TARGET_FILE:tests>
+        DEPENDS tests
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Running tests under Valgrind Cachegrind"
+    )
+
+    add_custom_target(valgrind_memcheck
+        COMMAND ${VALGRIND_EXECUTABLE} --tool=memcheck --leak-check=full --track-origins=yes $<TARGET_FILE:tests>
+        DEPENDS tests
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Running tests under Valgrind Memcheck"
+    )
+endif()

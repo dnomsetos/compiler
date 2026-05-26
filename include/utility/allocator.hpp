@@ -4,7 +4,14 @@
 #include <memory_resource>
 
 namespace alloc {
-inline std::pmr::monotonic_buffer_resource mr;
+
+namespace {
+
+std::pmr::monotonic_buffer_resource arena_resource;
+
+};
+
+inline std::pmr::memory_resource& mr = arena_resource;
 
 template <typename T> struct MonotonicBufferResourceDeleter {
   void operator()(T* ptr) const noexcept(std::is_nothrow_destructible_v<T>) {
