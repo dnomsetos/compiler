@@ -6,6 +6,7 @@ Terminator::Terminator(UnconditionalBranchInst&& inst)
     : terminator{std::move(inst)} {}
 Terminator::Terminator(SwitchInst&& inst) : terminator{std::move(inst)} {}
 Terminator::Terminator(ReturnInst&& inst) : terminator{std::move(inst)} {}
+Terminator::Terminator(DummyTerminator&& inst) : terminator{std::move(inst)} {}
 
 Instruction::Instruction(Alloca&& inst) : inst{std::move(inst)} {}
 Instruction::Instruction(BorrowShared&& inst) : inst{std::move(inst)} {}

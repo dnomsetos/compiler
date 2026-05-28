@@ -48,13 +48,38 @@ public:
 
 private:
   struct LoopContext {
-    alloc::pmr_weak_ptr<BasicBlock> body;
-    alloc::pmr_weak_ptr<BasicBlock> finish;
+    BasicBlock* body;
+    BasicBlock* finish;
     std::optional<std::string> label;
-    alloc::pmr_weak_ptr<BasicBlock> parent;
+    BasicBlock* parent;
   };
 
   LoopContext& find_loop(const std::string& label = "");
+
+  void emit_reference_arg(const ast::IdentifierNode& arg,
+                          const std::string& arg_name, const Symbol* symbol,
+                          std::size_t index, const std::string& fn_name);
+  void emit_value_arg(const ast::IdentifierNode& arg,
+                      const std::string& arg_name, const Symbol* symbol);
+
+  void emit_borrow_inst(const ast::VariableDefinitionNode& variable_definition,
+                        const std::string& name, const Symbol* symbol);
+  void resolve_borrow_from_identifier(Instruction& borrow_inst,
+                                      const ast::UnaryNode& right_unary_node);
+  void resolve_borrow_from_ref(Instruction& borrow_inst,
+                               const ast::UnaryNode& right_unary_node);
+
+  void visit_value_assignment(const ast::AssignmentNode& assignment);
+  void visit_ref_assignment(const ast::AssignmentNode& assignment);
+  void emit_ref_rebind_from_ref(const ast::AssignmentNode& assignment,
+                                AccessKindVariant& lvar,
+                                const ast::UnaryNode& right_unary);
+  void emit_ref_rebind_from_addr(const ast::AssignmentNode& assignment,
+                                 const ast::IdentifierNode& lident,
+                                 AccessKindVariant& lvar,
+                                 const ast::UnaryNode& right_unary);
+
+  AccessKindVariant& lookup_var(const ast::IdentifierNode& ident);
 
   std::unordered_map<SymbolTable*, std::vector<Alloca*>> scopes_;
   TypeStore& type_store_;

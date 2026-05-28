@@ -12,7 +12,6 @@ void BorrowChecker::State::Applier::operator()(
 void BorrowChecker::State::Applier::operator()(const bc_ir::Alloca& inst) {
   if (state.place_status.contains(inst.variable) &&
       state.place_status.at(inst.variable) != Status::Undefined) {
-
     throw std::runtime_error("Attempt to declare variable that is "
                              "already defined at " +
                              inst.position.to_string());
@@ -24,33 +23,35 @@ void BorrowChecker::State::Applier::operator()(const bc_ir::Alloca& inst) {
 void BorrowChecker::State::Applier::operator()(const bc_ir::BorrowMut& inst) {
   Status& resource_status = state.place_status.at(inst.resource);
 
-  if (resource_status == Status::Undefined) {
+  switch (resource_status) {
+  case Status::Undefined:
     throw std::runtime_error("Attempt to borrow undefined resource at " +
                              inst.position.to_string());
 
-  } else if (resource_status == Status::Dead) {
+  case Status::Dead:
     throw std::runtime_error("Attempt to borrow dead resource at " +
                              inst.position.to_string());
 
-  } else if (resource_status == Status::SharedBorrowed) {
+  case Status::SharedBorrowed:
     throw std::runtime_error(
         "Attempt to borrow resource that is already shared borrowed at " +
         inst.position.to_string());
 
-  } else if (resource_status == Status::MutBorrowed) {
+  case Status::MutBorrowed:
     throw std::runtime_error(
         "Attempt to borrow resource that is already mutably borrowed at " +
         inst.position.to_string());
 
-  } else if (resource_status == Status::UnknownBorowed) {
+  case Status::UnknownBorowed:
     throw std::runtime_error(
         "Attempt to borrow resource that is already unknown borrowed at " +
         inst.position.to_string());
 
-  } else if (resource_status == Status::Live) {
+  case Status::Live:
     resource_status = Status::MutBorrowed;
     state.mut_borrow[inst.resource] = &inst;
     state.shared_borrows[inst.resource].clear();
+    break;
   }
 }
 
@@ -58,58 +59,62 @@ void BorrowChecker::State::Applier::operator()(
     const bc_ir::BorrowShared& inst) {
   Status& resource_status = state.place_status.at(inst.resource);
 
-  if (resource_status == Status::Undefined) {
+  switch (resource_status) {
+  case Status::Undefined:
     throw std::runtime_error("Attempt to borrow undefined resource at " +
                              inst.position.to_string());
 
-  } else if (resource_status == Status::Dead) {
+  case Status::Dead:
     throw std::runtime_error("Attempt to borrow dead resource at " +
                              inst.position.to_string());
 
-  } else if (resource_status == Status::MutBorrowed) {
+  case Status::MutBorrowed:
     throw std::runtime_error(
         "Attempt to borrow resource that is already mutably borrowed at " +
         inst.position.to_string());
 
-  } else if (resource_status == Status::SharedBorrowed) {
+  case Status::SharedBorrowed:
     state.shared_borrows[inst.resource].insert(&inst);
+    break;
 
-  } else if (resource_status == Status::UnknownBorowed) {
+  case Status::UnknownBorowed:
+  case Status::Live:
     resource_status = Status::SharedBorrowed;
     state.mut_borrow[inst.resource] = nullptr;
     state.shared_borrows[inst.resource].insert(&inst);
-
-  } else if (resource_status == Status::Live) {
-    resource_status = Status::SharedBorrowed;
-    state.mut_borrow[inst.resource] = nullptr;
-    state.shared_borrows[inst.resource].insert(&inst);
+    break;
   }
 }
 
 void BorrowChecker::State::Applier::operator()(const bc_ir::Read& inst) {
   Status& variable_status = state.place_status.at(inst.target->variable);
 
-  if (variable_status == Status::Undefined) {
+  switch (variable_status) {
+  case Status::Undefined:
     throw std::runtime_error("Attempt to read undefined variable at " +
                              inst.position.to_string());
 
-  } else if (variable_status == Status::Dead) {
+  case Status::Dead:
     throw std::runtime_error("Attempt to read dead variable at " +
                              inst.position.to_string());
 
-  } else if (variable_status == Status::SharedBorrowed) {
+  case Status::SharedBorrowed:
     // OK
+    break;
 
-  } else if (variable_status == Status::MutBorrowed) {
+  case Status::MutBorrowed:
     state.mut_borrow[inst.target->variable] = nullptr;
     variable_status = Status::Live;
+    break;
 
-  } else if (variable_status == Status::UnknownBorowed) {
+  case Status::UnknownBorowed:
     state.mut_borrow[inst.target->variable] = nullptr;
     variable_status = Status::SharedBorrowed;
+    break;
 
-  } else if (variable_status == Status::Live) {
+  case Status::Live:
     // OK
+    break;
   }
 }
 
@@ -117,29 +122,31 @@ void BorrowChecker::State::Applier::operator()(
     const bc_ir::ReadImmutRef& inst) {
   Status& variable_status = state.place_status.at(inst.target->resource);
 
-  if (variable_status == Status::Undefined) {
+  switch (variable_status) {
+  case Status::Undefined:
     throw std::runtime_error("Attempt to read undefined variable at " +
                              inst.position.to_string());
 
-  } else if (variable_status == Status::Dead) {
+  case Status::Dead:
     throw std::runtime_error("Attempt to read dead variable at " +
                              inst.position.to_string());
 
-  } else if (variable_status == Status::SharedBorrowed) {
+  case Status::SharedBorrowed:
     if (!state.shared_borrows[inst.target->resource].contains(inst.target)) {
       throw std::runtime_error(
           "Attempt to read variable with use immutable reference, "
           "but this reference is dead at " +
           inst.position.to_string());
     }
+    break;
 
-  } else if (variable_status == Status::MutBorrowed) {
+  case Status::MutBorrowed:
     throw std::runtime_error(
         "Attempt to read variable with use immutable reference "
         "that is mutably borrowed at " +
         inst.position.to_string());
 
-  } else if (variable_status == Status::UnknownBorowed) {
+  case Status::UnknownBorowed:
     if (!state.shared_borrows[inst.target->resource].contains(inst.target)) {
       throw std::runtime_error(
           "Attempt to read variable with use immutable reference, "
@@ -149,8 +156,9 @@ void BorrowChecker::State::Applier::operator()(
 
     variable_status = Status::SharedBorrowed;
     state.mut_borrow[inst.target->resource] = nullptr;
+    break;
 
-  } else if (variable_status == Status::Live) {
+  case Status::Live:
     throw std::runtime_error(
         "Attempt to read variable that is not borrowed at " +
         inst.position.to_string());
@@ -160,29 +168,31 @@ void BorrowChecker::State::Applier::operator()(
 void BorrowChecker::State::Applier::operator()(const bc_ir::ReadMutRef& inst) {
   Status& variable_status = state.place_status.at(inst.target->resource);
 
-  if (variable_status == Status::Undefined) {
+  switch (variable_status) {
+  case Status::Undefined:
     throw std::runtime_error("Attempt to read undefined variable at " +
                              inst.position.to_string());
 
-  } else if (variable_status == Status::Dead) {
+  case Status::Dead:
     throw std::runtime_error("Attempt to read dead variable at " +
                              inst.position.to_string());
 
-  } else if (variable_status == Status::SharedBorrowed) {
+  case Status::SharedBorrowed:
     throw std::runtime_error(
         "Attempt to read variable with use mutable reference, "
         "but this reference is shared borrowed at " +
         inst.position.to_string());
 
-  } else if (variable_status == Status::MutBorrowed) {
+  case Status::MutBorrowed:
     if (state.mut_borrow[inst.target->resource] != inst.target) {
       throw std::runtime_error(
           "Attempt to read variable with use mutable reference, "
           "but this reference is dead at " +
           inst.position.to_string());
     }
+    break;
 
-  } else if (variable_status == Status::UnknownBorowed) {
+  case Status::UnknownBorowed:
     if (state.mut_borrow[inst.target->resource] != inst.target) {
       throw std::runtime_error(
           "Attempt to read variable with use mutable reference, "
@@ -192,8 +202,9 @@ void BorrowChecker::State::Applier::operator()(const bc_ir::ReadMutRef& inst) {
 
     variable_status = Status::MutBorrowed;
     state.shared_borrows[inst.target->resource].clear();
+    break;
 
-  } else if (variable_status == Status::Live) {
+  case Status::Live:
     throw std::runtime_error(
         "Attempt to read variable that is not borrowed at " +
         inst.position.to_string());
@@ -203,57 +214,64 @@ void BorrowChecker::State::Applier::operator()(const bc_ir::ReadMutRef& inst) {
 void BorrowChecker::State::Applier::operator()(const bc_ir::Write& inst) {
   Status& variable_status = state.place_status.at(inst.target->variable);
 
-  if (variable_status == Status::Undefined) {
+  switch (variable_status) {
+  case Status::Undefined:
     throw std::runtime_error("Attempt to write to undefined variable at " +
                              inst.position.to_string());
 
-  } else if (variable_status == Status::Dead) {
+  case Status::Dead:
     throw std::runtime_error("Attempt to write to dead variable at " +
                              inst.position.to_string());
 
-  } else if (variable_status == Status::SharedBorrowed) {
+  case Status::SharedBorrowed:
     state.shared_borrows[inst.target->variable].clear();
     variable_status = Status::Live;
+    break;
 
-  } else if (variable_status == Status::MutBorrowed) {
+  case Status::MutBorrowed:
     state.mut_borrow[inst.target->variable] = nullptr;
     variable_status = Status::Live;
+    break;
 
-  } else if (variable_status == Status::UnknownBorowed) {
+  case Status::UnknownBorowed:
     state.shared_borrows[inst.target->variable].clear();
     state.mut_borrow[inst.target->variable] = nullptr;
     variable_status = Status::Live;
+    break;
 
-  } else if (variable_status == Status::Live) {
+  case Status::Live:
+    break;
   }
 }
 
 void BorrowChecker::State::Applier::operator()(const bc_ir::WriteRef& inst) {
   Status& variable_status = state.place_status.at(inst.target->resource);
 
-  if (variable_status == Status::Undefined) {
+  switch (variable_status) {
+  case Status::Undefined:
     throw std::runtime_error("Attempt to write to undefined variable at " +
                              inst.position.to_string());
 
-  } else if (variable_status == Status::Dead) {
+  case Status::Dead:
     throw std::runtime_error("Attempt to write to dead variable at " +
                              inst.position.to_string());
 
-  } else if (variable_status == Status::SharedBorrowed) {
+  case Status::SharedBorrowed:
     throw std::runtime_error(
         "Attempt to write to variable with use mutable reference, "
         "but this reference is shared borrowed at " +
         inst.position.to_string());
 
-  } else if (variable_status == Status::MutBorrowed) {
+  case Status::MutBorrowed:
     if (state.mut_borrow[inst.target->resource] != inst.target) {
       throw std::runtime_error(
           "Attempt to write to variable with use mutable reference, "
           "but this reference is dead at " +
           inst.position.to_string());
     }
+    break;
 
-  } else if (variable_status == Status::UnknownBorowed) {
+  case Status::UnknownBorowed:
     if (state.mut_borrow[inst.target->resource] != inst.target) {
       throw std::runtime_error(
           "Attempt to write to variable with use mutable reference, "
@@ -263,8 +281,9 @@ void BorrowChecker::State::Applier::operator()(const bc_ir::WriteRef& inst) {
 
     variable_status = Status::MutBorrowed;
     state.shared_borrows[inst.target->resource].clear();
+    break;
 
-  } else if (variable_status == Status::Live) {
+  case Status::Live:
     throw std::runtime_error(
         "Attempt to write to variable that is not borrowed at " +
         inst.position.to_string());

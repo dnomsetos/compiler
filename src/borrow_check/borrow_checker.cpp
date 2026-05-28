@@ -2,6 +2,7 @@
 
 #include <borrow_check/borrow_checker.hpp>
 #include <borrow_check/places_state.hpp>
+#include <stdexcept>
 
 void BorrowChecker::State::apply(const bc_ir::Instruction& inst) {
   Applier applier{*this};
@@ -67,12 +68,12 @@ void BorrowChecker::check(const bc_ir::Function& function) {
   in_.clear();
   out_.clear();
 
-  for (auto* block : function.blocks) {
-    in_.try_emplace(block);
-    out_.try_emplace(block);
+  for (const auto& block : function.blocks) {
+    in_.try_emplace(&block);
+    out_.try_emplace(&block);
   }
 
-  std::unordered_set<bc_ir::BasicBlock*> worklist{function.entry.get()};
+  std::unordered_set<bc_ir::BasicBlock*> worklist{function.entry};
 
   while (!worklist.empty()) {
     bc_ir::BasicBlock* block = *worklist.begin();
@@ -80,10 +81,10 @@ void BorrowChecker::check(const bc_ir::Function& function) {
 
     State in_state{block->incoming_edges.empty()
                        ? State{}
-                       : out_.at(block->incoming_edges.front().lock().get())};
+                       : out_.at(block->incoming_edges.front())};
 
     for (auto& pred : block->incoming_edges | std::views::drop(1)) {
-      bc_ir::BasicBlock* pred_block = pred.lock().get();
+      bc_ir::BasicBlock* pred_block = pred;
 
       in_state.meet(out_.at(pred_block));
     }
@@ -93,20 +94,27 @@ void BorrowChecker::check(const bc_ir::Function& function) {
     }
 
     if (out_.at(block) != in_state) {
-      out_.at(block) = in_state;
+      out_.at(block).join(in_state);
 
-      std::visit(overloaded{[&](bc_ir::UnconditionalBranchInst& inst) {
-                              worklist.emplace(inst.target.get());
-                            },
+      std::visit(
+          overloaded{[&](bc_ir::UnconditionalBranchInst& inst) {
+                       worklist.emplace(inst.target);
+                     },
 
-                            [&](bc_ir::SwitchInst& inst) {
-                              for (auto& case_block : inst.cases) {
-                                worklist.emplace(case_block.get());
-                              }
-                            },
+                     [&](bc_ir::SwitchInst& inst) {
+                       for (auto& case_block : inst.cases) {
+                         worklist.emplace(case_block);
+                       }
+                     },
 
-                            [&](bc_ir::ReturnInst&) {}},
-                 block->terminator.get()->terminator);
+                     [&](bc_ir::ReturnInst&) {},
+
+                     [&](bc_ir::DummyTerminator&) {
+                       throw std::runtime_error(
+                           "Dummy terminator is alive after contruction bc ir");
+                     }},
+
+          block->terminator.terminator);
     }
   }
 }

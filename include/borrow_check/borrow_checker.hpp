@@ -60,6 +60,6 @@ private:
     std::unordered_map<const Symbol*, const bc_ir::BorrowMut*> mut_borrow;
   };
 
-  std::unordered_map<bc_ir::BasicBlock*, State> in_;
-  std::unordered_map<bc_ir::BasicBlock*, State> out_;
+  std::unordered_map<const bc_ir::BasicBlock*, State> in_;
+  std::unordered_map<const bc_ir::BasicBlock*, State> out_;
 };

@@ -1,11 +1,9 @@
 #pragma once
 
 #include <deque>
-#include <memory>
 #include <vector>
 
 #include <semantic_analysis/symbol_table.hpp>
-#include <utility/allocator.hpp>
 #include <utility/type_tuple.hpp>
 
 #define ENABLE_DEBUG
@@ -104,23 +102,26 @@ using StateChangeTypeTuple = TypeTuple<Read, Write, ReadImmutRef, ReadMutRef,
 struct BasicBlock;
 
 struct UnconditionalBranchInst {
-  alloc::pmr_shared_ptr<BasicBlock> target;
+  BasicBlock* target;
 };
 
 struct SwitchInst {
-  std::pmr::vector<alloc::pmr_shared_ptr<BasicBlock>> cases{&alloc::mr};
+  std::pmr::vector<BasicBlock*> cases{&alloc::mr};
 };
 
 struct ReturnInst {};
 
+struct DummyTerminator {};
+
 using TerminatorTypeTuple =
-    TypeTuple<UnconditionalBranchInst, SwitchInst, ReturnInst>;
+    TypeTuple<UnconditionalBranchInst, SwitchInst, ReturnInst, DummyTerminator>;
 using TerminatorVariant = type_tuple_to_variant_t<TerminatorTypeTuple>;
 
 struct Terminator {
   Terminator(UnconditionalBranchInst&&);
   Terminator(SwitchInst&&);
   Terminator(ReturnInst&&);
+  Terminator(DummyTerminator&&);
 
   TerminatorVariant terminator;
 };
@@ -144,18 +145,18 @@ struct Instruction {
   InstructionVariant inst;
 };
 
-struct BasicBlock : std::enable_shared_from_this<BasicBlock> {
-  std::vector<std::weak_ptr<BasicBlock>> incoming_edges;
-  alloc::pmr_unique_ptr<Terminator> terminator{nullptr};
-  std::deque<Instruction> instructions;
+struct BasicBlock {
+  std::vector<BasicBlock*> incoming_edges{};
+  Terminator terminator{DummyTerminator{}};
+  std::deque<Instruction> instructions{};
   [[no_unique_address]] debug_string name;
 };
 
 struct Function {
   const Symbol* symbol;
-  std::pmr::vector<BasicBlock*> blocks{&alloc::mr};
-  alloc::pmr_shared_ptr<BasicBlock> entry;
-  std::deque<FunctionArgPlaceholder> arg_placeholders;
+  std::deque<BasicBlock> blocks{};
+  BasicBlock* entry{nullptr};
+  std::deque<FunctionArgPlaceholder> arg_placeholders{};
   [[no_unique_address]] debug_string name;
 };
 
