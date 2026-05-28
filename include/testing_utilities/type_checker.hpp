@@ -1,13 +1,25 @@
 #pragma once
 
 #include <parser/ast.hpp>
+#include <semantic_analysis/type_storage.hpp>
 #include <semantic_analysis/types.hpp>
 
 class TypeChecker {
+private:
+  TypeStore& type_store_;
+
+  bool is_concrete(tp::TypeId type_id) const;
+
 public:
+  explicit TypeChecker(TypeStore& type_store) : type_store_(type_store) {}
+
   void visit(const ast::IdentifierNode& identifier);
 
   void visit(const ast::LiteralNode& literal);
+
+  void visit(const ast::LvalueDereferenceNode& lvalue);
+
+  void visit(const ast::LvalueExpressionNode& lvalue);
 
   void visit(const ast::FunctionCallNode& function_call);
 

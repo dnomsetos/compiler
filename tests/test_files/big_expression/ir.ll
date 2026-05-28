@@ -1,5 +1,5 @@
-; ModuleID = 'tests/test_files/big_expression/code.txt'
-source_filename = "tests/test_files/big_expression/code.txt"
+; ModuleID = 'tests/test_files/big_expression/code.rs'
+source_filename = "tests/test_files/big_expression/code.rs"
 
 @x = global i32 87
 

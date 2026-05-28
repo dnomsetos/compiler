@@ -117,8 +117,7 @@ function definition:
                                     primary: 
                                       identifier: x
                                   to type: 
-                                    identifier: i8
-                              binary operation: +
+                                    i8                              binary operation: +
                               multiplication: 
                                 cast: 
                                   unary: 

@@ -11,6 +11,24 @@ void PrintVisitor::operator()(const ast::IdentifierNode& identifier) {
   out_ << tabs_ << "identifier: " << identifier.identifier->name << std::endl;
 }
 
+void PrintVisitor::operator()(const ast::TypeNode& type) {
+  if (type.is_reference) {
+    if (type.is_mutable) {
+      out_ << tabs_ << "mutable reference to " << type.type_name->name;
+    } else {
+      out_ << tabs_ << "reference to " << type.type_name->name;
+    }
+    return;
+  }
+
+  out_ << tabs_ << type.type_name->name;
+}
+
+void PrintVisitor::operator()(const ast::LvalueDereferenceNode& expression) {
+  out_ << tabs_ << "dereferenced reference: " << std::endl;
+  std::visit(*this, *expression.reference);
+}
+
 void PrintVisitor::operator()(const ast::LiteralNode& literal) {
   std::visit(
       [this](auto&& value) {
@@ -134,7 +152,11 @@ void PrintVisitor::operator()(const ast::AssignmentNode& assignment) {
 
   tabs_ += "  ";
 
-  operator()(*assignment.left);
+  if (std::holds_alternative<ast::IdentifierNode>(*assignment.left->lvalue)) {
+    operator()(std::get<ast::IdentifierNode>(*assignment.left->lvalue));
+  } else {
+    operator()(std::get<ast::LvalueDereferenceNode>(*assignment.left->lvalue));
+  }
 
   out_ << tabs_ << "assigned value: " << std::endl;
 
@@ -336,8 +358,14 @@ void PrintVisitor::operator()(const ast::VariableDefinitionNode& var_def) {
   out_ << tabs_ << "name: " << var_def.name->identifier->name << std::endl;
 
   if (var_def.type.has_value()) {
-    out_ << tabs_ << "type: " << var_def.type.value()->identifier->name
-         << std::endl;
+    out_ << tabs_ << "type: ";
+
+    tabs_ += "  ";
+    operator()(*var_def.type.value());
+    tabs_.pop_back();
+    tabs_.pop_back();
+
+    out_ << std::endl;
   }
 
   if (var_def.value.has_value()) {
@@ -364,7 +392,9 @@ void PrintVisitor::operator()(const ast::FunctionDefinitionNode& fn_def) {
 
     for (auto& [name, type] : fn_def.argument_list) {
       out_ << tabs_ << "argument with name " << name.identifier->name
-           << " with type " << type.identifier->name << std::endl;
+           << " with type ";
+      operator()(type);
+      out_ << std::endl;
     }
 
     tabs_.pop_back();
@@ -374,8 +404,9 @@ void PrintVisitor::operator()(const ast::FunctionDefinitionNode& fn_def) {
   if (fn_def.return_type == nullptr) {
     out_ << tabs_ << "return type is void" << std::endl;
   } else {
-    out_ << tabs_ << "return type: " << fn_def.return_type->identifier->name
-         << std::endl;
+    out_ << tabs_ << "return type: ";
+    operator()(*fn_def.return_type);
+    out_ << std::endl;
   }
 
   out_ << tabs_ << "body: " << std::endl;

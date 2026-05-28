@@ -25,6 +25,8 @@ public:
              tp::TypeId expected_type = tp::no_type_id);
   void visit(ast::LoopExpressionNode& loop,
              tp::TypeId expected_type = tp::no_type_id);
+  void visit(ast::LvalueExpressionNode& lvalue,
+             tp::TypeId expected_type = tp::no_type_id);
   void visit(ast::AssignmentNode& assignment,
              tp::TypeId expected_type = tp::no_type_id);
 
@@ -56,6 +58,9 @@ public:
              tp::TypeId expected_type = tp::no_type_id);
 
   void visit(ast::PrimaryNode& primary_node,
+             tp::TypeId expected_type = tp::no_type_id);
+
+  void visit(ast::LvalueDereferenceNode& dereference_node,
              tp::TypeId expected_type = tp::no_type_id);
 
   void visit(ast::FunctionCallNode& function_call,

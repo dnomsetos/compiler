@@ -42,7 +42,7 @@ function definition:
     statement: 
       variable definition: 
         name: z
-        type: i64
+        type:           i64
         value: 
         expression: 
           logical or: 

@@ -1,5 +1,6 @@
 variable definition: 
   name: x
+  type:     i32
   value: 
   expression: 
     logical or: 

@@ -1,7 +1,10 @@
-tests/test_files/helpers.o
 build/
+build-valgrind/
+build-debug/
 .cache/
 Testing/
 .clang-format
 .clangd
 include/utility/result*
+play.rs
+helpers.o

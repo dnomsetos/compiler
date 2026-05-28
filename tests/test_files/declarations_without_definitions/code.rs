@@ -1,6 +1,6 @@
 fn main() {
-  let x;
-  let z;
+  let mut x;
+  let mut z;
   let y = 34;
 
   if y > 10 {

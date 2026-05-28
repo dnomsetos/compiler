@@ -1,6 +1,5 @@
-let x : i64;
+static x: i64 = 1 + 2 * 3;
 
 fn main() {
-    x = 1 + 2 * 3;
     print_i64(x);
 }

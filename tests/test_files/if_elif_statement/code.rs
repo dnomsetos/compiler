@@ -1,4 +1,4 @@
-fn func(x: u64) -> u64 {
+fn func(x: mut u64) -> u64 {
   if x == 0 {
     x = 10;
   } else {

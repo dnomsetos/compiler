@@ -3,9 +3,8 @@
 
 #include <semantic_analysis/symbol_table.hpp>
 
-SymbolTable::SymbolTable(std::size_t index, SymbolTable* parent,
-                         ScopeVariant&& scope)
-    : index_{index}, parent_{parent}, scope_{scope} {}
+SymbolTable::SymbolTable(SymbolTable* parent, ScopeVariant&& scope)
+    : parent_{parent}, scope_{scope} {}
 
 bool SymbolTable::insert_variable(const std::string& name, Symbol&& symbol) {
   return variable_symbols_.emplace(name, symbol).second;
@@ -31,7 +30,27 @@ auto SymbolTable::get_variable_symbol_maybe_undefined(
 auto SymbolTable::get_variable_symbol(const std::string& name) const
     -> const Symbol* {
   if (variable_symbols_.contains(name)) {
-    if (!variable_symbols_.at(name).is_defined) {
+
+    const SymbolInfo& info = variable_symbols_.at(name).symbol_info;
+
+    bool is_defined = std::visit(
+        [&](auto&& val) -> bool {
+          using T = std::decay_t<decltype(val)>;
+          if constexpr (!std::is_same_v<T, BasicTypeInfo> &&
+                        !std::is_same_v<T, ReferenceInfo>) {
+            throw std::runtime_error(
+                "variable " + name + " is declared but is not defined at " +
+                std::to_string(variable_symbols_.at(name).position.start.line) +
+                ":" +
+                std::to_string(
+                    variable_symbols_.at(name).position.start.offset));
+          } else {
+            return val.is_defined;
+          }
+        },
+        info.info);
+
+    if (!is_defined) {
       throw std::runtime_error(
           "variable " + name + " is declared but is not defined at " +
           std::to_string(variable_symbols_.at(name).position.start.line) + ":" +
@@ -125,14 +144,12 @@ const SymbolTable* SymbolTable::get_parent() const { return parent_; }
 SymbolTable::ScopeVariant& SymbolTable::get_scope() { return scope_; }
 
 SymbolTable* SymbolTable::create_simple_child() {
-  children_.push_back(alloc::make_unique_pmr<SymbolTable>(children_.size(),
-                                                          this, SimpleScope{}));
+  children_.push_back(alloc::make_unique_pmr<SymbolTable>(this, SimpleScope{}));
   return &*children_.back();
 }
 
 SymbolTable* SymbolTable::create_loop_child(tp::TypeId expected_type) {
-  children_.push_back(
-      alloc::make_unique_pmr<SymbolTable>(children_.size(), this, LoopScope{}));
+  children_.push_back(alloc::make_unique_pmr<SymbolTable>(this, LoopScope{}));
 
   std::get<LoopScope>(children_.back()->get_scope()).expected_type =
       expected_type;
@@ -142,8 +159,7 @@ SymbolTable* SymbolTable::create_loop_child(tp::TypeId expected_type) {
 
 SymbolTable* SymbolTable::create_loop_child(const std::string& label,
                                             tp::TypeId expected_type) {
-  children_.push_back(
-      alloc::make_unique_pmr<SymbolTable>(children_.size(), this, LoopScope{}));
+  children_.push_back(alloc::make_unique_pmr<SymbolTable>(this, LoopScope{}));
 
   std::get<LoopScope>(children_.back()->get_scope()).expected_type =
       expected_type;
@@ -153,8 +169,8 @@ SymbolTable* SymbolTable::create_loop_child(const std::string& label,
 }
 
 SymbolTable* SymbolTable::create_function_child() {
-  children_.push_back(alloc::make_unique_pmr<SymbolTable>(
-      children_.size(), this, FunctionScope{}));
+  children_.push_back(
+      alloc::make_unique_pmr<SymbolTable>(this, FunctionScope{}));
 
   return &*children_.back();
 }
@@ -210,7 +226,22 @@ void SymbolTable::change_symbol_type(const std::string& name, tp::TypeId type) {
 
 void SymbolTable::define_symbol(const std::string& name) {
   if (variable_symbols_.contains(name)) {
-    variable_symbols_.at(name).is_defined = true;
+    std::visit(
+        [&](auto&& val) {
+          using T = std::decay_t<decltype(val)>;
+          if constexpr (!std::is_same_v<T, BasicTypeInfo> &&
+                        !std::is_same_v<T, ReferenceInfo>) {
+            throw std::runtime_error(
+                "variable " + name + " is declared but is not defined at " +
+                std::to_string(variable_symbols_.at(name).position.start.line) +
+                ":" +
+                std::to_string(
+                    variable_symbols_.at(name).position.start.offset));
+          } else {
+            val.is_defined = true;
+          }
+        },
+        variable_symbols_.at(name).symbol_info.info);
     return;
   }
 
@@ -229,7 +260,8 @@ GlobalSymbolTable::GlobalSymbolTable(TypeStore& type_store) : root_{} {
                                         {type_store.get_basic_type(T{})}),
 
         .scope = &root_,
-        .definition = nullptr};
+        .symbol_info = SymbolInfo{.info = FunctionInfo{.definition = nullptr}},
+    };
     root_.insert_function(name, std::move(symbol));
   };
   add_symbol.template operator()<tp::I8>("print_i8");

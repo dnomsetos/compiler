@@ -32,9 +32,13 @@ GENERATE_NTERM(Unary)
 GENERATE_NTERM(Primary)
 GENERATE_NTERM(Literal)
 GENERATE_NTERM(Cast)
+GENERATE_NTERM(Type)
+GENERATE_NTERM(Dereference)
+GENERATE_NTERM(LvalueExpression)
 
-using NtermTuple = TypeTuple<Definition, Statement, Expression, Assignment,
-                             Unary, Primary, Literal, Cast>;
+using NtermTuple =
+    TypeTuple<Definition, Statement, Expression, Assignment, Unary, Primary,
+              Literal, Cast, Type, Dereference, LvalueExpression>;
 
 using NtermVariant = type_tuple_to_variant_t<NtermTuple>;
 
@@ -51,10 +55,9 @@ struct TryButCant : std::runtime_error, tkn::Position {
 using ParseIter = std::deque<tkn::TokenInfo>::const_iterator;
 
 template <typename T>
-using ParseResult = std::expected<
-    std::pair<std::unique_ptr<T, alloc::MonotonicBufferResourceDeleter<T>>,
-              ParseIter>,
-    std::variant<UnexpectedToken, TryButCant>>;
+using ParseResult =
+    std::expected<std::pair<alloc::pmr_unique_ptr<T>, ParseIter>,
+                  std::variant<UnexpectedToken, TryButCant>>;
 
 auto parse_program(ParseIter begin, ParseIter end) -> ParseResult<ast::Program>;
 
@@ -83,37 +86,39 @@ auto parse_expression(ParseIter begin) -> ParseResult<ast::ExpressionNode>;
 
 auto parse_assignment(ParseIter begin) -> ParseResult<ast::AssignmentNode>;
 
-inline auto parse_logical_or(ParseIter begin)
-    -> ParseResult<ast::LogicalOrNode>;
+auto parse_lvalue_expression(ParseIter begin)
+    -> ParseResult<ast::LvalueExpressionNode>;
 
-inline auto parse_logical_and(ParseIter begin)
-    -> ParseResult<ast::LogicalAndNode>;
+auto parse_logical_or(ParseIter begin) -> ParseResult<ast::LogicalOrNode>;
 
-inline auto parse_comparison(ParseIter begin)
-    -> ParseResult<ast::ComparisonNode>;
+auto parse_logical_and(ParseIter begin) -> ParseResult<ast::LogicalAndNode>;
 
-inline auto parse_bitwise_or(ParseIter begin)
-    -> ParseResult<ast::BitwiseOrNode>;
+auto parse_comparison(ParseIter begin) -> ParseResult<ast::ComparisonNode>;
 
-inline auto parse_bitwise_xor(ParseIter begin)
-    -> ParseResult<ast::BitwiseXorNode>;
+auto parse_bitwise_or(ParseIter begin) -> ParseResult<ast::BitwiseOrNode>;
 
-inline auto parse_bitwise_and(ParseIter begin)
-    -> ParseResult<ast::BitwiseAndNode>;
+auto parse_bitwise_xor(ParseIter begin) -> ParseResult<ast::BitwiseXorNode>;
 
-inline auto parse_shift(ParseIter begin) -> ParseResult<ast::ShiftNode>;
+auto parse_bitwise_and(ParseIter begin) -> ParseResult<ast::BitwiseAndNode>;
 
-inline auto parse_addition(ParseIter begin) -> ParseResult<ast::AdditionNode>;
+auto parse_shift(ParseIter begin) -> ParseResult<ast::ShiftNode>;
 
-inline auto parse_multiplication(ParseIter begin)
+auto parse_addition(ParseIter begin) -> ParseResult<ast::AdditionNode>;
+
+auto parse_multiplication(ParseIter begin)
     -> ParseResult<ast::MultiplicationNode>;
 
-inline auto parse_cast(ParseIter begin) -> ParseResult<ast::CastNode>;
+auto parse_cast(ParseIter begin) -> ParseResult<ast::CastNode>;
 
 auto parse_unary(ParseIter begin) -> ParseResult<ast::UnaryNode>;
+
+auto parse_lvalue_dereference(ParseIter begin)
+    -> ParseResult<ast::LvalueDereferenceNode>;
 
 auto parse_primary(ParseIter begin) -> ParseResult<ast::PrimaryNode>;
 
 auto parse_literal(ParseIter begin) -> ParseResult<ast::LiteralNode>;
+
+auto parse_type(ParseIter begin) -> ParseResult<ast::TypeNode>;
 
 auto parse_identifier(ParseIter begin) -> ParseResult<ast::IdentifierNode>;

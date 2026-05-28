@@ -44,6 +44,8 @@ llvm::Type* get_llvm_type(TypeStore& type_store, llvm::IRBuilder<>& builder,
             params.push_back(get_llvm_type(type_store, builder, context, a));
           }
           return llvm::FunctionType::get(ret, params, false);
+        } else if constexpr (std::is_same_v<T, tp::ReferenceType>) {
+          return llvm::PointerType::getUnqual(context);
         }
 
         throw std::runtime_error("Unknown type");

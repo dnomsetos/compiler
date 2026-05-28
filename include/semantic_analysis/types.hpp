@@ -54,6 +54,15 @@ struct FloatLiteral {
 
 std::ostream& operator<<(std::ostream& out, const FloatLiteral& literal);
 
+struct ReferenceType {
+  TypeId base_type = no_type_id;
+  bool is_mutable = false;
+
+  bool operator==(const ReferenceType& other) const = default;
+};
+
+std::ostream& operator<<(std::ostream& out, const ReferenceType& reference);
+
 using LiteralTypeTuple = TypeTuple<IntLiteral, FloatLiteral>;
 
 using LiteralVariant = type_tuple_to_variant_t<LiteralTypeTuple>;
@@ -113,7 +122,7 @@ static_assert(type_tuple_size_v<BasicTypeTypeTuple> == 13);
 
 using TypeTypeTuple =
     Concat<BasicTypeTypeTuple, LiteralTypeTuple,
-           TypeTuple<FunctionType, UndefinedType, NoType>>::type;
+           TypeTuple<FunctionType, ReferenceType, UndefinedType, NoType>>::type;
 
 using TypeVariant = type_tuple_to_variant_t<TypeTypeTuple>;
 
@@ -136,6 +145,8 @@ struct Type {
   Type(UndefinedType&& type);
 
   Type(const FunctionType& type);
+
+  Type(ReferenceType&& type);
 
   TypeVariant type;
 };

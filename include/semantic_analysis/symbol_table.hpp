@@ -14,13 +14,33 @@ class GlobalSymbolTable;
 
 class TypeStore;
 
+struct Symbol;
+
+struct FunctionInfo {
+  ast::FunctionDefinitionNode* definition;
+};
+
+struct BasicTypeInfo {
+  const bool is_mutable = false;
+  bool is_defined = false;
+};
+
+struct ReferenceInfo {
+  Symbol* dest;
+  const bool is_mutable = false;
+  bool is_defined = false;
+};
+
+struct SymbolInfo {
+  std::variant<FunctionInfo, BasicTypeInfo, ReferenceInfo> info;
+};
+
 struct Symbol {
   tkn::Position position;
   tp::TypeId type;
   // declaration scope
   SymbolTable* scope;
-  ast::FunctionDefinitionNode* definition;
-  bool is_defined = false;
+  SymbolInfo symbol_info;
 };
 
 class SymbolTable {
@@ -41,7 +61,7 @@ public:
 
   using ScopeVariant = type_tuple_to_variant_t<ScopeTypeTuple>;
 
-  SymbolTable(std::size_t index = 0, SymbolTable* parent = nullptr,
+  SymbolTable(SymbolTable* parent = nullptr,
               ScopeVariant&& scope = SimpleScope{});
 
   bool insert_variable(const std::string& name, Symbol&& symbol);
@@ -100,7 +120,6 @@ public:
   void define_symbol(const std::string& name);
 
 private:
-  std::size_t index_;
   SymbolTable* parent_ = nullptr;
   std::pmr::vector<alloc::pmr_unique_ptr<SymbolTable>> children_{&alloc::mr};
   std::unordered_map<std::string, Symbol> variable_symbols_;

@@ -1,8 +1,8 @@
 function definition: 
   name: func
   argument list: 
-    argument with name x with type u64
-  return type: u64
+    argument with name x with type     u64
+  return type:   u64
   body: 
     statement: 
       if expression: 
@@ -332,4 +332,4 @@ function definition:
                                                                                             primary: 
                                                                                               literal: 42
                                                               to type: 
-                                                                identifier: i32
+                                                                i32

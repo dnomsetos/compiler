@@ -1,5 +1,5 @@
-; ModuleID = 'tests/test_files/different_types/code.txt'
-source_filename = "tests/test_files/different_types/code.txt"
+; ModuleID = 'tests/test_files/different_types/code.rs'
+source_filename = "tests/test_files/different_types/code.rs"
 
 @a = global i8 1
 @b = global i16 2

@@ -1,6 +1,6 @@
 variable definition: 
   name: a
-  type: i8
+  type:     i8
   value: 
   expression: 
     logical or: 
@@ -18,7 +18,7 @@ variable definition:
                             literal: 1
 variable definition: 
   name: b
-  type: i16
+  type:     i16
   value: 
   expression: 
     logical or: 
@@ -36,7 +36,7 @@ variable definition:
                             literal: 2
 variable definition: 
   name: c
-  type: i32
+  type:     i32
   value: 
   expression: 
     logical or: 
@@ -54,7 +54,7 @@ variable definition:
                             literal: 3
 variable definition: 
   name: d
-  type: i64
+  type:     i64
   value: 
   expression: 
     logical or: 
@@ -72,7 +72,7 @@ variable definition:
                             literal: 4
 variable definition: 
   name: e
-  type: u8
+  type:     u8
   value: 
   expression: 
     logical or: 
@@ -90,7 +90,7 @@ variable definition:
                             literal: 5
 variable definition: 
   name: f
-  type: u16
+  type:     u16
   value: 
   expression: 
     logical or: 
@@ -108,7 +108,7 @@ variable definition:
                             literal: 6
 variable definition: 
   name: g
-  type: u32
+  type:     u32
   value: 
   expression: 
     logical or: 
@@ -126,7 +126,7 @@ variable definition:
                             literal: 7
 variable definition: 
   name: h
-  type: u64
+  type:     u64
   value: 
   expression: 
     logical or: 
@@ -144,7 +144,7 @@ variable definition:
                             literal: 8
 variable definition: 
   name: i
-  type: f32
+  type:     f32
   value: 
   expression: 
     logical or: 
@@ -162,7 +162,7 @@ variable definition:
                             literal: 9
 variable definition: 
   name: j
-  type: f64
+  type:     f64
   value: 
   expression: 
     logical or: 
@@ -180,7 +180,7 @@ variable definition:
                             literal: 10
 variable definition: 
   name: k
-  type: bool
+  type:     bool
   value: 
   expression: 
     logical or: 
@@ -198,7 +198,7 @@ variable definition:
                             literal: true
 variable definition: 
   name: l
-  type: char
+  type:     char
   value: 
   expression: 
     logical or: 
@@ -217,11 +217,11 @@ variable definition:
 function definition: 
   name: aboba
   argument list: 
-    argument with name a with type i32
-    argument with name b with type bool
-    argument with name c with type u64
-    argument with name d with type char
-  return type: u8
+    argument with name a with type     i32
+    argument with name b with type     bool
+    argument with name c with type     u64
+    argument with name d with type     char
+  return type:   u8
   body: 
     statement: 
       expression: 
@@ -269,16 +269,14 @@ function definition:
                               primary: 
                                 identifier: a
                             to type: 
-                              identifier: u8
-                        binary operation: +
+                              u8                        binary operation: +
                         multiplication: 
                           cast: 
                             unary: 
                               primary: 
                                 identifier: c
                             to type: 
-                              identifier: u8
-function definition: 
+                              u8function definition: 
   name: main
   argument list is empty
   return type is void
@@ -401,4 +399,4 @@ function definition:
                                                                                       primary: 
                                                                                         literal: a
                                                         to type: 
-                                                          identifier: u16
+                                                          u16

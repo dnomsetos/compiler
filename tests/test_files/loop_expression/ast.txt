@@ -1,10 +1,10 @@
 function definition: 
   name: find_positive
   argument list: 
-    argument with name a with type i32
-    argument with name b with type i32
-    argument with name c with type i32
-  return type: i32
+    argument with name a with type     i32
+    argument with name b with type     i32
+    argument with name c with type     i32
+  return type:   i32
   body: 
     statement: 
       variable definition: 

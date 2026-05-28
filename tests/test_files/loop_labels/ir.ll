@@ -1,5 +1,5 @@
-; ModuleID = 'tests/test_files/loop_labels/code.txt'
-source_filename = "tests/test_files/loop_labels/code.txt"
+; ModuleID = 'tests/test_files/loop_labels/code.rs'
+source_filename = "tests/test_files/loop_labels/code.rs"
 
 declare void @print_i8(i8)
 

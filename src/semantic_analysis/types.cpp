@@ -10,11 +10,6 @@ std::ostream& operator<<(std::ostream& out, const FloatLiteral&) {
   return out << "Float literal";
 }
 
-// std::ostream& operator<<(std::ostream& out, const VariableType&) {
-//   out << "VariableType" << std::endl;
-//   return out;
-// }
-
 std::ostream& operator<<(std::ostream& out, const UndefinedType&) {
   out << "UndefinedType" << std::endl;
   return out;
@@ -25,6 +20,17 @@ FunctionType::FunctionType(std::vector<TypeId>&& args, TypeId return_type)
 
 std::ostream& operator<<(std::ostream& out, const FunctionType&) {
   out << "Function" << std::endl;
+  return out;
+}
+
+std::ostream& operator<<(std::ostream& out, const ReferenceType& ref) {
+  if (ref.is_mutable) {
+    out << "Mutable reference ";
+  } else {
+    out << "Reference ";
+  }
+
+  out << "to " << ref.base_type << std::endl;
   return out;
 }
 
@@ -58,6 +64,8 @@ Type::Type(LiteralVariant&& type)
 Type::Type(UndefinedType&& type) : type{std::move(type)} {}
 
 Type::Type(const FunctionType& type) : type{type} {}
+
+Type::Type(ReferenceType&& type) : type{std::move(type)} {}
 
 bool is_basic_type(TypeId type_id) { return type_id < basic_type_count; }
 
